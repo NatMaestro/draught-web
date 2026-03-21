@@ -2,6 +2,9 @@
  * Client-side legal move generation — mirrors `draught-be/apps/board_engine/engine.py`
  * so selected-piece highlights appear instantly without waiting for GET /legal-moves/.
  * Server still validates on move; this is for UX only.
+ *
+ * Men slide forward only; captures (and multi-jumps) use all four diagonals, including backward.
+ * Kings: flying slides and flying captures.
  */
 
 import type { LegalDestination } from "@/lib/optimisticBoard";
@@ -43,6 +46,10 @@ function isPlayer2(cell: number): boolean {
   return cell === P2_PIECE || cell === P2_KING;
 }
 
+function isKingCell(cell: number): boolean {
+  return cell === P1_KING || cell === P2_KING;
+}
+
 function getDirections(cell: number): Array<[number, number]> {
   if (cell === P1_KING || cell === P2_KING) return BOTH;
   if (cell === P1_PIECE) return P1_FORWARD;
@@ -76,94 +83,52 @@ function applyCapture(
 
 type MoveEntry = { dest: [number, number]; captured: Array<[number, number]> };
 
-function hasFurtherCapture(
-  board: number[][],
-  start: [number, number],
-  dest: [number, number],
-  captured: Array<[number, number]>,
-): boolean {
-  const b2 = applyCapture(board, start, dest, captured);
-  const cell = b2[dest[0]][dest[1]];
-  const opponent = getOpponentPieces(cell);
-  for (const [dr, dc] of getDirections(cell)) {
-    const nr = dest[0] + dr;
-    const nc = dest[1] + dc;
-    if (!inBounds(nr, nc)) continue;
-    const jr = nr + dr;
-    const jc = nc + dc;
-    if (!inBounds(jr, jc)) continue;
-    if (
-      opponent.has(b2[nr][nc]) &&
-      b2[jr][jc] === EMPTY &&
-      isPlayableTile(jr, jc)
-    ) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function extendCaptures(
-  board: number[][],
-  start: [number, number],
-  partial: MoveEntry[],
-): MoveEntry[] {
-  const result: MoveEntry[] = [];
-  for (const { dest, captured } of partial) {
-    if (!hasFurtherCapture(board, start, dest, captured)) {
-      result.push({ dest, captured });
-      continue;
-    }
-    const b2 = applyCapture(board, start, dest, captured);
-    const [pr, pc] = dest;
-    const cell = b2[pr][pc];
-    const opponent = getOpponentPieces(cell);
-    for (const [dr, dc] of getDirections(cell)) {
-      const nr = pr + dr;
-      const nc = pc + dc;
-      if (!inBounds(nr, nc)) continue;
-      const jr = nr + dr;
-      const jc = nc + dc;
-      if (!inBounds(jr, jc)) continue;
-      if (
-        opponent.has(b2[nr][nc]) &&
-        b2[jr][jc] === EMPTY &&
-        isPlayableTile(jr, jc)
-      ) {
-        const newCap: Array<[number, number]> = [...captured, [nr, nc]];
-        const extended = extendCaptures(b2, dest, [
-          { dest: [jr, jc], captured: newCap },
-        ]);
-        result.push(...extended);
-      }
-    }
-  }
-  return result;
-}
-
-function getLegalMovesRaw(
-  board: number[][],
-  fr: [number, number],
-  mustCapture: boolean,
-): MoveEntry[] {
-  const [row, col] = fr;
-  const cell = board[row][col];
-  if (cell === EMPTY) return [];
-  const directions = getDirections(cell);
+function enumerateKingFlyingHops(board: number[][], fr: [number, number]): MoveEntry[] {
+  const [r, c] = fr;
+  const cell = board[r][c];
+  if (!isKingCell(cell)) return [];
   const opponent = getOpponentPieces(cell);
   const captures: MoveEntry[] = [];
-  const simpleMoves: MoveEntry[] = [];
+  for (const [dr, dc] of BOTH) {
+    let k = 1;
+    for (;;) {
+      const nr = r + dr * k;
+      const nc = c + dc * k;
+      if (!inBounds(nr, nc)) break;
+      const here = board[nr][nc];
+      if (opponent.has(here)) {
+        let lr = nr + dr;
+        let lc = nc + dc;
+        while (
+          inBounds(lr, lc) &&
+          board[lr][lc] === EMPTY &&
+          isPlayableTile(lr, lc)
+        ) {
+          captures.push({ dest: [lr, lc], captured: [[nr, nc]] });
+          lr += dr;
+          lc += dc;
+        }
+        break;
+      }
+      if (here !== EMPTY) break;
+      k += 1;
+    }
+  }
+  return captures;
+}
 
-  for (const [dr, dc] of directions) {
-    const nr = row + dr;
-    const nc = col + dc;
+function enumerateMenAdjacentHops(board: number[][], fr: [number, number]): MoveEntry[] {
+  const [r, c] = fr;
+  const cell = board[r][c];
+  if (cell !== P1_PIECE && cell !== P2_PIECE) return [];
+  const opponent = getOpponentPieces(cell);
+  const captures: MoveEntry[] = [];
+  for (const [dr, dc] of BOTH) {
+    const nr = r + dr;
+    const nc = c + dc;
     if (!inBounds(nr, nc)) continue;
     const ncell = board[nr][nc];
-    if (ncell === EMPTY && isPlayableTile(nr, nc)) {
-      if (!mustCapture) {
-        simpleMoves.push({ dest: [nr, nc], captured: [] });
-      }
-    } else if (opponent.has(ncell)) {
+    if (opponent.has(ncell)) {
       const jr = nr + dr;
       const jc = nc + dc;
       if (
@@ -175,12 +140,74 @@ function getLegalMovesRaw(
       }
     }
   }
+  return captures;
+}
 
+function getNextCaptureHops(board: number[][], pos: [number, number]): MoveEntry[] {
+  const [r, c] = pos;
+  const cell = board[r][c];
+  if (cell === EMPTY) return [];
+  if (isKingCell(cell)) return enumerateKingFlyingHops(board, pos);
+  return enumerateMenAdjacentHops(board, pos);
+}
+
+function enumerateKingQuietSlides(board: number[][], fr: [number, number]): MoveEntry[] {
+  const [r, c] = fr;
+  const cell = board[r][c];
+  if (!isKingCell(cell)) return [];
+  const moves: MoveEntry[] = [];
+  for (const [dr, dc] of BOTH) {
+    let k = 1;
+    for (;;) {
+      const nr = r + dr * k;
+      const nc = c + dc * k;
+      if (!inBounds(nr, nc)) break;
+      if (board[nr][nc] !== EMPTY || !isPlayableTile(nr, nc)) break;
+      moves.push({ dest: [nr, nc], captured: [] });
+      k += 1;
+    }
+  }
+  return moves;
+}
+
+function extendGenericCaptures(
+  board: number[][],
+  start: [number, number],
+  partial: MoveEntry[],
+): MoveEntry[] {
+  const result: MoveEntry[] = [];
+  for (const { dest, captured } of partial) {
+    const b2 = applyCapture(board, start, dest, captured);
+    const nextHops = getNextCaptureHops(b2, dest);
+    if (nextHops.length === 0) {
+      result.push({ dest, captured });
+      continue;
+    }
+    for (const nh of nextHops) {
+      const newCap: Array<[number, number]> = [...captured, ...nh.captured];
+      const extended = extendGenericCaptures(b2, dest, [
+        { dest: nh.dest, captured: newCap },
+      ]);
+      result.push(...extended);
+    }
+  }
+  return result;
+}
+
+function getKingLegalMoves(
+  board: number[][],
+  fr: [number, number],
+  mustCapture: boolean,
+): MoveEntry[] {
+  const [row, col] = fr;
+  const cell = board[row][col];
+  if (!isKingCell(cell)) return [];
+  const captures = enumerateKingFlyingHops(board, fr);
   if (captures.length > 0) {
-    return extendCaptures(board, fr, captures);
+    return extendGenericCaptures(board, fr, captures);
   }
   if (mustCapture) return [];
-  return simpleMoves;
+  return enumerateKingQuietSlides(board, fr);
 }
 
 function anyCapturesAvailable(board: number[][], player: 1 | 2): boolean {
@@ -196,6 +223,38 @@ function anyCapturesAvailable(board: number[][], player: 1 | 2): boolean {
     }
   }
   return false;
+}
+
+function getLegalMovesRaw(
+  board: number[][],
+  fr: [number, number],
+  mustCapture: boolean,
+): MoveEntry[] {
+  const [row, col] = fr;
+  const cell = board[row][col];
+  if (cell === EMPTY) return [];
+  if (isKingCell(cell)) {
+    return getKingLegalMoves(board, fr, mustCapture);
+  }
+  const slideDirs = getDirections(cell);
+  const captures = enumerateMenAdjacentHops(board, fr);
+  const simpleMoves: MoveEntry[] = [];
+  for (const [dr, dc] of slideDirs) {
+    const nr = row + dr;
+    const nc = col + dc;
+    if (!inBounds(nr, nc)) continue;
+    const ncell = board[nr][nc];
+    if (ncell === EMPTY && isPlayableTile(nr, nc)) {
+      if (!mustCapture) {
+        simpleMoves.push({ dest: [nr, nc], captured: [] });
+      }
+    }
+  }
+  if (captures.length > 0) {
+    return extendGenericCaptures(board, fr, captures);
+  }
+  if (mustCapture) return [];
+  return simpleMoves;
 }
 
 /**

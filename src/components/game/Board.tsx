@@ -28,6 +28,8 @@ export type BoardProps = {
   onDragPieceSelect?: (row: number, col: number) => void;
   /** Hint: highlight suggested destination square. */
   hintDestination?: [number, number] | null;
+  /** AI games: last square the opponent (bot) moved to — stays until the human moves. */
+  botLastMoveTo?: [number, number] | null;
   disabled?: boolean;
   /** 180° rotation duration (ms); from measured API/WebSocket latency in local 2P. */
   rotationDurationMs?: number;
@@ -100,6 +102,7 @@ export function Board({
   onDragMove,
   onDragPieceSelect,
   hintDestination = null,
+  botLastMoveTo = null,
   disabled,
   rotationDurationMs = DEFAULT_BOARD_ROTATION_MS,
 }: BoardProps) {
@@ -136,6 +139,13 @@ export function Board({
       hintDestination[1] === lc
     ) {
       return "hint";
+    }
+    if (
+      botLastMoveTo &&
+      botLastMoveTo[0] === lr &&
+      botLastMoveTo[1] === lc
+    ) {
+      return "botLast";
     }
     if (
       showMoveHighlights &&
@@ -433,6 +443,9 @@ export function Board({
                   : "",
                 hi === "hint"
                   ? "z-[2] border-2 border-violet-500 bg-violet-500/35 shadow-[0_0_0_2px_rgba(139,92,246,0.7),inset_0_0_18px_rgba(196,181,253,0.45)]"
+                  : "",
+                hi === "botLast"
+                  ? "z-[2] border-2 border-sky-400 bg-sky-500/35 shadow-[0_0_0_2px_rgba(56,189,248,0.75),inset_0_0_18px_rgba(125,211,252,0.4)]"
                   : "",
                 hi === "move"
                   ? "z-[2] border-2 border-amber-300 bg-amber-400/50 shadow-[0_0_0_2px_rgba(251,191,36,0.65),inset_0_0_18px_rgba(254,249,195,0.45)]"

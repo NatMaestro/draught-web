@@ -44,7 +44,17 @@ export interface MoveResponse {
   winner: number | null;
   status: string;
   captured: Array<{ row: number; col: number }>;
+  /** Cell values (1–4) on the pre-move board for each `captured` square (trophy icons). */
+  captured_piece_values?: number[];
 }
+
+/** Single ply as stored by Django `Move` (one row per human/AI move). */
+export type GameMoveApi = {
+  from_row: number;
+  from_col: number;
+  to_row: number;
+  to_col: number;
+};
 
 /** GET /games/:id/ — aligns with GameSerializer. */
 export interface GameDetail {
@@ -52,6 +62,8 @@ export interface GameDetail {
   status: string;
   current_turn: number;
   board_state: number[][];
+  /** Ordered moves for replay / move list (P1 and P2 alternate from index 0). */
+  moves?: GameMoveApi[];
   is_ai_game: boolean;
   /** Same-device hot-seat (undo allowed with AI games). */
   is_local_2p?: boolean;

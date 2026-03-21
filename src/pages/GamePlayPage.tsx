@@ -64,6 +64,7 @@ export function GamePlayPage() {
     moveHistory,
     hintMessage,
     hintDestination,
+    lastBotMoveTo,
     canUndo,
     requestHint,
     undoLastMove,
@@ -99,10 +100,10 @@ export function GamePlayPage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-cream text-text">
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream text-text">
       {/* Mobile: compact top bar — matches Home / app header */}
       <header
-        className="sticky top-0 z-30 flex items-center justify-between gap-2 border-b border-header/25 bg-header px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden"
+        className="z-30 flex shrink-0 items-center justify-between gap-2 border-b border-header/25 bg-header px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden"
       >
         <Link
           to="/play"
@@ -145,10 +146,10 @@ export function GamePlayPage() {
         isAiGame={isAiGame}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <GamePlaySidebar onOpenRules={() => setRulesOpen(true)} />
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {loading ? (
             <div className="flex flex-1 items-center justify-center p-8 text-muted">
               Loading game…
@@ -170,7 +171,7 @@ export function GamePlayPage() {
             </div>
           ) : (
             <GamePlayErrorBoundary>
-            <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
               {/* Board column: top stats, flex board, bottom stats pinned to viewport bottom */}
               <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-4">
                 <div className="mx-auto flex min-h-0 w-full max-w-[min(100%,720px)] flex-1 flex-col">
@@ -199,6 +200,7 @@ export function GamePlayPage() {
                       possibleMoves={possibleMoves}
                       showMoveHighlights={showLegalMoveHighlights}
                       hintDestination={hintDestination}
+                      botLastMoveTo={isAiGame ? lastBotMoveTo : null}
                       onSquareClick={(r, c) => void onSquareClick(r, c)}
                       onDragMove={(from, to) => void attemptMove(from, to)}
                       onDragPieceSelect={(r, c) => void onSquareClick(r, c)}
@@ -252,10 +254,10 @@ export function GamePlayPage() {
 
               {/* Ad slot — reserve space for AdSense */}
               <aside
-                className="hidden w-[min(300px,28vw)] shrink-0 border-l border-header/20 bg-sheet/60 xl:flex xl:flex-col"
+                className="hidden w-[min(300px,28vw)] shrink-0 border-l border-header/20 bg-sheet/60 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
                 aria-label="Advertisement"
               >
-                <div className="flex flex-1 flex-col items-center justify-start p-4">
+                <div className="flex min-h-0 flex-1 flex-col items-center justify-start p-4">
                   <p className="text-center text-[11px] uppercase tracking-wider text-muted">
                     Ad space
                   </p>

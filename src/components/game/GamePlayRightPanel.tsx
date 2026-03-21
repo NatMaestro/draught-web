@@ -76,8 +76,8 @@ export function GamePlayRightPanel({
     canUndo && movesForDisplay.length > 0 && !busy && !gameOver;
 
   return (
-    <div className="flex w-full min-w-0 flex-col border-t border-header/20 bg-sheet/90 lg:w-[min(100%,320px)] lg:border-l lg:border-t-0 xl:min-w-[300px]">
-      <div className="border-b border-header/20 px-3 py-2">
+    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-t border-header/20 bg-sheet/90 lg:border-l lg:border-t-0 xl:h-full xl:max-h-full xl:w-[min(100%,320px)] xl:min-w-[300px] xl:flex-none xl:shrink-0 xl:self-stretch">
+      <div className="shrink-0 border-b border-header/20 px-3 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted">
@@ -106,7 +106,7 @@ export function GamePlayRightPanel({
       </div>
 
       {showChat ? (
-        <div className="border-b border-header/20 px-2 py-2">
+        <div className="shrink-0 border-b border-header/20 px-2 py-2">
           <GameChatPanel
             messages={chatMessages}
             onSend={sendChatMessage}
@@ -118,14 +118,14 @@ export function GamePlayRightPanel({
         </div>
       ) : null}
 
-      <div className="min-h-[120px] flex-1 overflow-y-auto border-b border-header/20 px-3 py-2">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain border-b border-header/20 px-3 py-2">
+        <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
           Moves
         </p>
         {movesForDisplay.length === 0 ? (
           <p className="text-xs text-muted">Starting position</p>
         ) : (
-          <ol className="space-y-1 font-mono text-[11px] text-text/90 sm:text-xs">
+          <ol className="min-h-0 space-y-1 font-mono text-[11px] text-text/90 sm:text-xs">
             {movesForDisplay.map((m, i) => (
               <li key={`move-${i}`}>
                 {formatMove(m, i)}
@@ -135,7 +135,7 @@ export function GamePlayRightPanel({
         )}
       </div>
 
-      <div className="mt-auto space-y-2 p-3">
+      <div className="shrink-0 space-y-2 p-3">
         <div className="grid grid-cols-3 gap-2">
           <button
             type="button"

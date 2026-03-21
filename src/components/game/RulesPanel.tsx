@@ -15,18 +15,23 @@ export function GameRulesContent() {
         four rows; Player 2 in the top four. Each has 20 men.
       </li>
       <li>
-        <strong className="text-text">Movement:</strong> Each move is one diagonal
-        step. Men move forward only (toward the opponent). Kings move one step in
-        any diagonal direction.
+        <strong className="text-text">Movement:</strong> Men move one diagonal
+        step forward only (toward the opponent). Kings may slide any distance
+        along a diagonal through empty squares.
       </li>
       <li>
-        <strong className="text-text">Captures:</strong> Jump over an adjacent
-        enemy to an empty landing square. If any capture is possible, you must
-        capture (including multi-jumps in one turn when the engine chains them).
+        <strong className="text-text">Captures:</strong> Men jump over an adjacent
+        enemy to the next square beyond. Men may capture in any diagonal
+        direction (including backward) when a jump is available. If any capture
+        is possible, you must capture (including multi-jumps in one turn when the
+        engine chains them).
       </li>
       <li>
         <strong className="text-text">Kings:</strong> Promoted when a man reaches
-        the far rank (P1 → row 0, P2 → row 9).
+        the far rank (P1 → row 0, P2 → row 9). A king may slide any distance
+        along empty diagonals. It captures by jumping an opponent on a diagonal
+        and landing on any empty square beyond it (forward, backward, or
+        chained in one turn).
       </li>
       <li>
         <strong className="text-text">Win / loss:</strong> Opponent has only one

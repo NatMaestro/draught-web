@@ -81,12 +81,20 @@ function normalizeMoveResponse(raw: unknown): MoveResponse | null {
       return null;
     })
     .filter((x): x is { row: number; col: number } => x != null);
+  const cpvRaw = o.captured_piece_values ?? o.capturedPieceValues;
+  const cpvParsed = Array.isArray(cpvRaw)
+    ? cpvRaw.map((x) => toNum(x))
+    : undefined;
   return {
     board,
     current_turn,
     winner: toWinner(o.winner),
     status: String(o.status ?? "active"),
     captured,
+    ...(cpvParsed &&
+      cpvParsed.length === captured.length && {
+        captured_piece_values: cpvParsed,
+      }),
   };
 }
 
@@ -139,6 +147,18 @@ export type MoveRecord = {
   player: 1 | 2;
 };
 
+/** Rebuild move list from GET /games/:id/ after refresh (plies alternate P1, P2, …). */
+function mapApiMovesToMoveRecords(
+  raw: GameDetail["moves"],
+): MoveRecord[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map((m, i) => ({
+    from: [Number(m.from_row), Number(m.from_col)] as [number, number],
+    to: [Number(m.to_row), Number(m.to_col)] as [number, number],
+    player: ((i % 2) + 1) as 1 | 2,
+  }));
+}
+
 function logMove(
   message: string,
   payload?: Record<string, unknown>,
@@ -177,6 +197,10 @@ export function useGamePlay(gameId: string | undefined) {
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   /** Highlight destination square for Hint (row, col). */
   const [hintDestination, setHintDestination] = useState<
+    [number, number] | null
+  >(null);
+  /** AI games: landing square of the bot's last move (clears when the human plays). */
+  const [lastBotMoveTo, setLastBotMoveTo] = useState<
     [number, number] | null
   >(null);
   const [canUndo, setCanUndo] = useState(false);
@@ -248,9 +272,18 @@ export function useGamePlay(gameId: string | undefined) {
         pendingCaptureValuesRef.current = null;
         return;
       }
+      const serverVals = data.captured_piece_values;
+      const useServer =
+        Array.isArray(serverVals) &&
+        serverVals.length === caps.length &&
+        serverVals.every((v) => typeof v === "number" && v > 0);
       const pending = pendingCaptureValuesRef.current;
       const values: number[] = [];
       for (let i = 0; i < caps.length; i++) {
+        if (useServer) {
+          values.push(serverVals[i] as number);
+          continue;
+        }
         const sq = caps[i];
         const r = Number(sq.row);
         const c = Number(sq.col);
@@ -285,11 +318,12 @@ export function useGamePlay(gameId: string | undefined) {
     setStatus(st);
     setIsAiGame(Boolean(data.is_ai_game));
     setWinner(null);
-    setMoveHistory([]);
+    setMoveHistory(mapApiMovesToMoveRecords(data.moves));
     lastMoveRef.current = null;
     setCanUndo(Boolean(data.can_undo));
     setHintDestination(null);
     setHintMessage(null);
+    setLastBotMoveTo(null);
 
     const gid = String(data.id);
     const resume = loadResumeSnapshot();
@@ -327,6 +361,7 @@ export function useGamePlay(gameId: string | undefined) {
       if (typeof data.can_undo === "boolean") {
         setCanUndo(data.can_undo);
       }
+      setMoveHistory(mapApiMovesToMoveRecords(data.moves));
       return data;
     } catch (e: unknown) {
       logMove("sync GET failed", { detail: String(e) });
@@ -361,6 +396,17 @@ export function useGamePlay(gameId: string | undefined) {
       skipNextMoveSoundRef.current = false;
       const mover = (normalized.current_turn === 1 ? 2 : 1) as 1 | 2;
       addCapturesForMover(mover, normalized, boardForCaptures);
+      if (isAiGame && mover === 1) {
+        setLastBotMoveTo(null);
+      } else if (isAiGame && mover === 2) {
+        const { to } = inferMoveEndpointsFromBoardDiff(
+          boardForCaptures,
+          normalized.board,
+          2,
+          normalized.captured,
+        );
+        if (to) setLastBotMoveTo(to);
+      }
       if (wasOurPending) {
         recordRotationLatencyFromMoveStart();
       }
@@ -503,6 +549,13 @@ export function useGamePlay(gameId: string | undefined) {
             }
           }
           addCapturesForMover(2, aiNorm, bBefore);
+          const { to: aiTo } = inferMoveEndpointsFromBoardDiff(
+            bBefore,
+            aiNorm.board,
+            2,
+            aiNorm.captured,
+          );
+          if (aiTo) setLastBotMoveTo(aiTo);
           applyMovePayload(aiNorm, setters);
         }
         await syncBoardAndTurnFromServer();
@@ -598,6 +651,8 @@ export function useGamePlay(gameId: string | undefined) {
         });
         return;
       }
+
+      setLastBotMoveTo(null);
 
       pendingCaptureValuesRef.current =
         chosen.captured.length > 0
@@ -887,6 +942,13 @@ export function useGamePlay(gameId: string | undefined) {
             if (loadAiNorm) {
               const bBeforeAi = boardRef.current;
               addCapturesForMover(2, loadAiNorm, bBeforeAi);
+              const { to: loadAiTo } = inferMoveEndpointsFromBoardDiff(
+                bBeforeAi,
+                loadAiNorm.board,
+                2,
+                loadAiNorm.captured,
+              );
+              if (loadAiTo) setLastBotMoveTo(loadAiTo);
               applyMovePayload(loadAiNorm, setters);
             }
             await syncBoardAndTurnFromServer();
@@ -1155,6 +1217,7 @@ export function useGamePlay(gameId: string | undefined) {
       setStatus(u.status ?? "active");
       setP1CapturedPieces([...(u.p1_captured_piece_values ?? [])]);
       setP2CapturedPieces([...(u.p2_captured_piece_values ?? [])]);
+      setLastBotMoveTo(null);
       setCanUndo(Boolean(u.can_undo));
       setMoveHistory((h) => h.slice(0, -1));
       setHintDestination(null);
@@ -1229,6 +1292,8 @@ export function useGamePlay(gameId: string | undefined) {
     moveHistory,
     hintMessage,
     hintDestination,
+    /** AI: highlight square the bot moved to (cleared when you move). */
+    lastBotMoveTo,
     canUndo,
     requestHint,
     undoLastMove,

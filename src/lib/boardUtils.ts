@@ -3,6 +3,25 @@ export type PlayerId = 1 | 2;
 
 export const BOARD_SIZE = 10;
 
+const P1_PIECE = 1;
+const P2_PIECE = 2;
+
+/** Starting position — mirrors `create_initial_board()` in the Django engine. */
+export function createInitialBoard(): number[][] {
+  const board = emptyBoard();
+  for (let row = 0; row < 4; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if ((row + col) % 2 === 0) board[row][col] = P2_PIECE;
+    }
+  }
+  for (let row = 6; row < BOARD_SIZE; row++) {
+    for (let col = 0; col < BOARD_SIZE; col++) {
+      if ((row + col) % 2 === 0) board[row][col] = P1_PIECE;
+    }
+  }
+  return board;
+}
+
 /** Default board spin duration (ms) when no latency sample exists yet. */
 export const DEFAULT_BOARD_ROTATION_MS = 1350;
 
