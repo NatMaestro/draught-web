@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { FeedbackLink } from "@/components/feedback/FeedbackLink";
 
 type Props = {
   onOpenRules?: () => void;
@@ -34,6 +35,9 @@ export function GamePlaySidebar({ onOpenRules }: Props) {
           Rules
         </button>
       ) : null}
+      <FeedbackLink className="rounded-lg px-2 py-2 text-sm text-text/90 hover:bg-black/10 lg:mt-auto">
+        Feedback
+      </FeedbackLink>
     </aside>
   );
 }

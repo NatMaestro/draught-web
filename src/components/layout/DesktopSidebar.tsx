@@ -1,5 +1,6 @@
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
+import { FeedbackLink } from "@/components/feedback/FeedbackLink";
 
 const links = [
   { to: "/home", label: "Play", desc: "Home & matches" },
@@ -48,6 +49,9 @@ export function DesktopSidebar() {
           </NavLink>
         ))}
       </nav>
+      <FeedbackLink className="mb-3 block px-2 text-sm font-medium text-text/70 underline-offset-2 hover:text-text hover:underline">
+        Report an issue
+      </FeedbackLink>
       <NavLink
         to="/play"
         className="relative z-10 mt-4 rounded-2xl bg-text px-4 py-4 text-center font-bold text-cream shadow-lift transition hover:opacity-95"

@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { FeedbackLink } from "@/components/feedback/FeedbackLink";
 import { useAuthStore } from "@/store/authStore";
 
 export function MorePage() {
@@ -43,9 +44,12 @@ export function MorePage() {
             </div>
           )}
         </div>
-        <p className="text-sm text-muted">
-          Draught web — mobile-first, desktop-enhanced.
-        </p>
+        <div className="flex flex-col gap-2 text-sm text-muted">
+          <FeedbackLink className="font-medium text-text underline-offset-2 hover:underline">
+            Report a bug or send feedback
+          </FeedbackLink>
+          <p>Draught web — mobile-first, desktop-enhanced.</p>
+        </div>
       </motion.div>
     </div>
   );

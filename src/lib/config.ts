@@ -14,3 +14,8 @@ export const APP_MODE = import.meta.env.MODE;
 
 export const IS_DEV = import.meta.env.DEV;
 export const IS_PROD = import.meta.env.PROD;
+
+/** Google Form (or any HTTPS URL) for bug reports / feedback — empty hides the link. */
+const feedbackRaw = import.meta.env.VITE_FEEDBACK_FORM_URL?.trim();
+export const FEEDBACK_FORM_URL =
+  feedbackRaw && feedbackRaw.length > 0 ? feedbackRaw : "";
