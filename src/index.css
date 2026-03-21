@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased text-text;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply min-h-[100dvh] bg-cream font-sans;
+    background-image: var(--mesh-bg, none);
+  }
+  #root {
+    @apply min-h-[100dvh];
+  }
+}
+
+@layer utilities {
+  .safe-pb {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+  }
+}
