@@ -228,7 +228,7 @@ export function HomePage() {
         </motion.div>
       </div>
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-20 flex justify-center px-4 pb-[max(5.5rem,env(safe-area-inset-bottom))] md:hidden">
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-30 flex justify-center px-4 pb-floating-above-tab md:hidden">
         <motion.div className="pointer-events-auto w-full max-w-xl" whileTap={{ scale: 0.98 }}>
           <Link
             to="/play"

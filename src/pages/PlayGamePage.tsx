@@ -77,7 +77,7 @@ export function PlayGamePage() {
 
   return (
     <div
-      className="relative flex min-h-[100dvh] flex-col bg-cream safe-x pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+      className="relative flex min-h-[100dvh] flex-col bg-cream safe-x pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
       style={{ backgroundColor: "#F0EADA" }}
     >
       <PlayEntryAuthModal

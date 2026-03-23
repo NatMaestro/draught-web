@@ -32,4 +32,26 @@
   .pt-safe {
     padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
   }
+
+  /**
+   * Floating CTAs on Home (above fixed MobileTabBar in AppShell).
+   * Must be env(safe-area) + tab chrome — not max() of the two (that under-pads on many phones).
+   * If MobileTabBar layout changes, tweak the rem value (~5.5–6rem bar + gap).
+   */
+  .pb-floating-above-tab {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 6.75rem);
+  }
+
+  /** Fixed bottom docks (Play vs AI, in-game HUD) — extra lift above home indicator / browser UI */
+  .pb-safe-dock {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.75rem);
+  }
+
+  /**
+   * Board column on /play/game and /play/ai — reserve space for fixed bottom HUD/dock on mobile.
+   * md:pb-2 on the element overrides this on tablet+.
+   */
+  .pb-clear-mobile-game-hud {
+    padding-bottom: max(7.5rem, calc(env(safe-area-inset-bottom, 0px) + 7rem));
+  }
 }

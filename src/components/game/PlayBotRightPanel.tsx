@@ -140,12 +140,7 @@ export function PlayBotRightPanel({
       />
 
       {/* —— Mobile dock —— */}
-      <div
-        className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 md:hidden"
-        style={{
-          paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))",
-        }}
-      >
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 pb-safe-dock md:hidden">
         <div className="pointer-events-auto mx-auto max-w-lg pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]">
           {error ? (
             <p
