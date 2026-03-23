@@ -118,23 +118,26 @@ export function RulesHeaderIconButton({
   onClick,
   expanded,
   variant = "default",
+  className,
 }: {
   onClick: () => void;
   expanded: boolean;
   /** `dark` — light icon on glass/dark headers (e.g. mobile play screens). */
   variant?: "default" | "dark";
+  className?: string;
 }) {
   const tone =
     variant === "dark"
       ? "bg-white/10 text-white hover:bg-white/15"
-      : "bg-black/10 text-text hover:bg-black/15";
+      : "bg-black/10 hover:bg-black/15";
+  const textTone = variant === "dark" ? "" : "text-text";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="How this game works"
       aria-expanded={expanded}
-      className={`touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95 ${tone}`}
+      className={`touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95 ${tone} ${className ?? textTone}`}
     >
       <svg
         width="22"

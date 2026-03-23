@@ -28,7 +28,10 @@ export type BoardProps = {
   onDragPieceSelect?: (row: number, col: number) => void;
   /** Hint: highlight suggested destination square. */
   hintDestination?: [number, number] | null;
-  /** AI games: last square the opponent (bot) moved to — stays until the human moves. */
+  /**
+   * Last landing square for the opponent’s move (bot in AI games, human in online PvP,
+   * previous player in local 2P) — cleared when you move.
+   */
   botLastMoveTo?: [number, number] | null;
   disabled?: boolean;
   /**
@@ -396,7 +399,7 @@ export function Board({
 
   return (
     <div
-      className="mx-auto aspect-square w-[min(100%,92vw,680px,max(12rem,calc(100dvh-12.5rem)))] max-w-full min-w-[12rem] min-h-0 shrink-0 select-none touch-manipulation"
+      className="mx-auto aspect-square h-auto w-full min-h-0 min-w-[12rem] max-h-full max-w-[min(100%,92vw,680px)] shrink-0 select-none touch-manipulation"
       role="grid"
       aria-label="Draught board — tap or drag pieces"
     >

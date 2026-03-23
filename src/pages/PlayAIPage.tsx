@@ -110,19 +110,21 @@ export function PlayAIPage() {
           <GamePlayErrorBoundary>
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row md:items-stretch">
               {/* Board column — same structure as GamePlayPage */}
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-24 pt-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-24 pt-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pt-2 sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
                 <div className="mx-auto flex min-h-0 w-full max-w-[min(100%,720px)] flex-1 flex-col">
-                  <PlayerStatsStrip
-                    board={previewBoard}
-                    player={2}
-                    label={selected.name}
-                    capturedPieceValues={[]}
-                    isActiveTurn={false}
-                    variant="top"
-                    theme="cream"
-                  />
+                  <div className="shrink-0">
+                    <PlayerStatsStrip
+                      board={previewBoard}
+                      player={2}
+                      label={selected.name}
+                      capturedPieceValues={[]}
+                      isActiveTurn={false}
+                      variant="top"
+                      theme="cream"
+                    />
+                  </div>
 
-                  <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2">
+                  <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden py-1 sm:py-2">
                     <Board
                       board={previewBoard}
                       flip={false}
@@ -135,7 +137,7 @@ export function PlayAIPage() {
                     />
                   </div>
 
-                  <div className="mt-auto shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                  <div className="mt-auto shrink-0 pt-0.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                     <PlayerStatsStrip
                       board={previewBoard}
                       player={1}

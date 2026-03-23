@@ -191,6 +191,64 @@ function mapApiMovesToMoveRecords(
   }));
 }
 
+function computeMySeatFromGameDetail(
+  data: Pick<GameDetail, "player_one" | "player_two" | "is_ai_game" | "is_local_2p">,
+  userId: number | null,
+  username: string | null,
+): 1 | 2 | null {
+  if (Boolean(data.is_ai_game) || Boolean(data.is_local_2p)) return null;
+  const p1 = parsePlayerRef(data.player_one);
+  const p2 = parsePlayerRef(data.player_two);
+  if (!p1 || !p2) return null;
+  if (userId != null) {
+    if (p1.id === userId) return 1;
+    if (p2.id === userId) return 2;
+  }
+  if (username) {
+    if (p1.username === username) return 1;
+    if (p2.username === username) return 2;
+  }
+  return null;
+}
+
+/**
+ * Landing square to highlight: where the opponent (or bot / previous player in local 2P) last moved.
+ */
+function opponentLastMoveHighlightFromHistory(
+  moves: MoveRecord[],
+  args: {
+    status: string;
+    isAiGame: boolean;
+    isLocal2p: boolean;
+    mySeat: 1 | 2 | null;
+  },
+): [number, number] | null {
+  if (args.status !== "active") return null;
+  if (moves.length === 0) return null;
+  const last = moves[moves.length - 1];
+  if (args.isAiGame) {
+    return last.player === 2 ? last.to : null;
+  }
+  if (args.isLocal2p) return last.to;
+  if (args.mySeat == null) return null;
+  return last.player !== args.mySeat ? last.to : null;
+}
+
+function computeOpponentLastMoveHighlight(
+  data: GameDetail,
+  moves: MoveRecord[],
+  userId: number | null,
+  username: string | null,
+): [number, number] | null {
+  const seat = computeMySeatFromGameDetail(data, userId, username);
+  return opponentLastMoveHighlightFromHistory(moves, {
+    status: data.status ?? "active",
+    isAiGame: Boolean(data.is_ai_game),
+    isLocal2p: Boolean(data.is_local_2p),
+    mySeat: seat,
+  });
+}
+
 function logMove(
   message: string,
   payload?: Record<string, unknown>,
@@ -390,12 +448,13 @@ export function useGamePlay(gameId: string | undefined) {
     setPlayerOneProfile(parsePlayerRef(data.player_one));
     setPlayerTwoProfile(parsePlayerRef(data.player_two));
     setWinner(winnerSeatFromGameDetail(data));
-    setMoveHistory(mapApiMovesToMoveRecords(data.moves));
+    const moves = mapApiMovesToMoveRecords(data.moves);
+    setMoveHistory(moves);
     lastMoveRef.current = null;
     setCanUndo(Boolean(data.can_undo));
     setHintDestination(null);
     setHintMessage(null);
-    setLastBotMoveTo(null);
+    setLastBotMoveTo(computeOpponentLastMoveHighlight(data, moves, userId, username));
 
     const gid = String(data.id);
     const resume = loadResumeSnapshot();
@@ -420,7 +479,7 @@ export function useGamePlay(gameId: string | undefined) {
     setServerClock(clkHydrate);
     const plyCount = Array.isArray(data.moves) ? data.moves.length : 0;
     lastAppliedMoveCountRef.current = plyCount;
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userId, username]);
 
   /** Source of truth after any move: GET matches Django DB (board + turn). */
   const syncBoardAndTurnFromServer = useCallback(async (): Promise<GameDetail | null> => {
@@ -443,7 +502,9 @@ export function useGamePlay(gameId: string | undefined) {
       if (typeof data.can_undo === "boolean") {
         setCanUndo(data.can_undo);
       }
-      setMoveHistory(mapApiMovesToMoveRecords(data.moves));
+      const moves = mapApiMovesToMoveRecords(data.moves);
+      setMoveHistory(moves);
+      setLastBotMoveTo(computeOpponentLastMoveHighlight(data, moves, userId, username));
       setWinner(winnerSeatFromGameDetail(data));
       const clkSync = parseClockSnapshot(data as unknown);
       setServerClock(clkSync);
@@ -454,7 +515,27 @@ export function useGamePlay(gameId: string | undefined) {
       logMove("sync GET failed", { detail: String(e) });
       return null;
     }
-  }, [gameId]);
+  }, [gameId, userId, username]);
+
+  /** Human vs human over network (not AI, not same-device 2P). */
+  const isOnlinePvp = useMemo(() => {
+    if (isAiGame || isLocal2p) return false;
+    return playerOneProfile != null && playerTwoProfile != null;
+  }, [isAiGame, isLocal2p, playerOneProfile, playerTwoProfile]);
+
+  /** Current user's seat — online PvP only; prefers profile id, falls back to username match. */
+  const mySeat = useMemo((): 1 | 2 | null => {
+    if (!isOnlinePvp) return null;
+    if (userId != null) {
+      if (playerOneProfile?.id === userId) return 1;
+      if (playerTwoProfile?.id === userId) return 2;
+    }
+    if (username) {
+      if (playerOneProfile?.username === username) return 1;
+      if (playerTwoProfile?.username === username) return 2;
+    }
+    return null;
+  }, [isOnlinePvp, userId, username, playerOneProfile, playerTwoProfile]);
 
   const { wsReady, sendMove, sendChat, sendResign } = useGameWebSocket({
     gameId,
@@ -493,6 +574,29 @@ export function useGamePlay(gameId: string | undefined) {
           normalized.captured,
         );
         if (to) setLastBotMoveTo(to);
+      } else if (isLocal2p) {
+        const { to } = inferMoveEndpointsFromBoardDiff(
+          boardForCaptures,
+          normalized.board,
+          mover,
+          normalized.captured,
+        );
+        if (to) setLastBotMoveTo(to);
+      } else if (isOnlinePvp && mySeat != null) {
+        if (mover === mySeat) {
+          setLastBotMoveTo(null);
+        } else {
+          const { to } = inferMoveEndpointsFromBoardDiff(
+            boardForCaptures,
+            normalized.board,
+            mover,
+            normalized.captured,
+          );
+          if (to) setLastBotMoveTo(to);
+        }
+      }
+      if (normalized.winner != null) {
+        setLastBotMoveTo(null);
       }
       if (wasOurPending) {
         recordRotationLatencyFromMoveStart();
@@ -730,26 +834,6 @@ export function useGamePlay(gameId: string | undefined) {
       wsReady,
     ],
   );
-
-  /** Human vs human over network (not AI, not same-device 2P). */
-  const isOnlinePvp = useMemo(() => {
-    if (isAiGame || isLocal2p) return false;
-    return playerOneProfile != null && playerTwoProfile != null;
-  }, [isAiGame, isLocal2p, playerOneProfile, playerTwoProfile]);
-
-  /** Current user's seat — online PvP only; prefers profile id, falls back to username match. */
-  const mySeat = useMemo((): 1 | 2 | null => {
-    if (!isOnlinePvp) return null;
-    if (userId != null) {
-      if (playerOneProfile?.id === userId) return 1;
-      if (playerTwoProfile?.id === userId) return 2;
-    }
-    if (username) {
-      if (playerOneProfile?.username === username) return 1;
-      if (playerTwoProfile?.username === username) return 2;
-    }
-    return null;
-  }, [isOnlinePvp, userId, username, playerOneProfile, playerTwoProfile]);
 
   const flipBoard = useMemo(() => {
     if (isAiGame) return false;
@@ -1475,9 +1559,19 @@ export function useGamePlay(gameId: string | undefined) {
       setStatus(u.status ?? "active");
       setP1CapturedPieces([...(u.p1_captured_piece_values ?? [])]);
       setP2CapturedPieces([...(u.p2_captured_piece_values ?? [])]);
-      setLastBotMoveTo(null);
       setCanUndo(Boolean(u.can_undo));
-      setMoveHistory((h) => h.slice(0, -1));
+      setMoveHistory((h) => {
+        const next = h.slice(0, -1);
+        setLastBotMoveTo(
+          opponentLastMoveHighlightFromHistory(next, {
+            status: u.status ?? "active",
+            isAiGame,
+            isLocal2p,
+            mySeat,
+          }),
+        );
+        return next;
+      });
       setHintDestination(null);
       setHintMessage(null);
       setSelectedPiece(null);
@@ -1502,6 +1596,9 @@ export function useGamePlay(gameId: string | undefined) {
     winner,
     status,
     soundEnabled,
+    isAiGame,
+    isLocal2p,
+    mySeat,
   ]);
 
   const downloadGameRecord = useCallback(() => {

@@ -23,7 +23,7 @@ export function CapturedPiecesRow({ pieces, maxIcons = MAX_ICONS }: Props) {
       {shown.map((v, i) => (
         <div
           key={`cap-${i}-${v}`}
-          className="h-5 w-5 shrink-0 sm:h-6 sm:w-6"
+          className="h-4 w-4 shrink-0 sm:h-5 sm:w-5 md:h-6 md:w-6"
           title="Captured piece"
         >
           <Piece value={v} className="h-full w-full" />

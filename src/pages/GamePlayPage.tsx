@@ -64,7 +64,6 @@ export function GamePlayPage() {
     winner,
     status,
     isAiGame,
-    isRanked,
     isLocal2p,
     isOnlinePvp,
     mySeat,
@@ -255,14 +254,6 @@ export function GamePlayPage() {
     return currentTurn === 1 ? "Player 1 to move" : "Player 2 to move";
   }, [isAiGame, isOnlinePvp, mySeat, currentTurn, confirmedTurnForFlip]);
 
-  const modeSubtitle = isAiGame
-    ? "vs AI"
-    : isLocal2p
-      ? "Local 2P"
-      : isRanked
-        ? "Ranked online"
-        : "Casual online";
-
   /** Top / bottom strips: online PvP = opponent above, you below + avatars; else legacy P2 top / P1 bottom. */
   const { stripTop, stripBottom } = useMemo(() => {
     const clockRunning = useClock && !gameOver && status === "active";
@@ -360,9 +351,9 @@ export function GamePlayPage() {
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream bg-mesh-radial text-text">
-      {/* Mobile: compact top bar — matches Home / app header */}
+      {/* Mobile: minimal bar — back, logo, rules (settings via bottom dock) */}
       <header
-        className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-b from-[#1e1a14]/92 to-[#12100c]/95 py-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md md:hidden"
+        className="relative z-30 grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center border-b border-header/20 bg-cream/95 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.35rem,env(safe-area-inset-top))] pb-1.5 backdrop-blur-md md:hidden"
       >
         <Link
           to="/play"
@@ -372,39 +363,36 @@ export function GamePlayPage() {
               requestGuestNavigate("/play");
             }
           }}
-          className="touch-manipulation shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2.5 text-sm font-semibold text-white/95 transition active:scale-[0.98] min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className="touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-header/30 bg-sheet/90 text-black transition active:scale-[0.98]"
+          aria-label="Back to menu"
         >
-          ← Menu
+          <svg
+            width="22"
+            height="22"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
         </Link>
-        <div className="min-w-0 flex-1 text-center">
-          <p className="truncate font-display text-base tracking-wide text-white">
-            Draught
-          </p>
-          <p className="truncate text-[11px] text-cyan-200/75">
-            {turnLabel}
-            <span className="text-cyan-400/60"> · {modeSubtitle}</span>
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <p className="truncate text-center font-display text-[15px] font-semibold tracking-wide text-black">
+          Draught
+        </p>
+        <div className="flex justify-end">
           <RulesHeaderIconButton
-            variant="dark"
+            variant="default"
+            className="text-black"
             expanded={rulesOpen}
             onClick={() => {
               setRulesOpen((o) => !o);
               setSettingsOpen(false);
             }}
           />
-          <button
-            type="button"
-            onClick={() => {
-              setSettingsOpen(true);
-              setRulesOpen(false);
-            }}
-            className="touch-manipulation min-h-[44px] min-w-[44px] rounded-xl border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-white/95 hover:bg-white/10 flex items-center justify-center"
-            aria-expanded={settingsOpen}
-          >
-            Settings
-          </button>
         </div>
       </header>
 
@@ -495,24 +483,26 @@ export function GamePlayPage() {
             </div>
           ) : (
             <GamePlayErrorBoundary>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
-              {/* Board column: top stats, flex board, bottom stats pinned to viewport bottom */}
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-28 pt-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row md:items-stretch">
+              {/* Board column: same flex sizing as Play vs AI — strips in flow, board fills remaining space */}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-24 pt-1 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pt-2 sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
                 <div className="mx-auto flex min-h-0 w-full max-w-[min(100%,720px)] flex-1 flex-col">
-                  <PlayerStatsStrip
-                    board={board}
-                    player={stripTop.player}
-                    label={stripTop.label}
-                    avatarUsername={stripTop.avatarUsername}
-                    timerSeconds={stripTop.timerSeconds}
-                    timerActive={stripTop.timerActive}
-                    capturedPieceValues={stripTop.caps}
-                    isActiveTurn={stripTop.isActiveTurn}
-                    variant="top"
-                    theme="cream"
-                  />
+                  <div className="shrink-0">
+                    <PlayerStatsStrip
+                      board={board}
+                      player={stripTop.player}
+                      label={stripTop.label}
+                      avatarUsername={stripTop.avatarUsername}
+                      timerSeconds={stripTop.timerSeconds}
+                      timerActive={stripTop.timerActive}
+                      capturedPieceValues={stripTop.caps}
+                      isActiveTurn={stripTop.isActiveTurn}
+                      variant="top"
+                      theme="cream"
+                    />
+                  </div>
 
-                  <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2">
+                  <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden py-1 sm:py-2">
                     {busy ? (
                       <p className="absolute left-1/2 top-1 z-10 -translate-x-1/2 text-center text-xs text-muted">
                         Working…
@@ -527,7 +517,7 @@ export function GamePlayPage() {
                       possibleMoves={possibleMoves}
                       showMoveHighlights={showLegalMoveHighlights}
                       hintDestination={hintDestination}
-                      botLastMoveTo={isAiGame ? lastBotMoveTo : null}
+                      botLastMoveTo={lastBotMoveTo}
                       onSquareClick={(r, c) => void onSquareClick(r, c)}
                       onDragMove={(from, to) => void attemptMove(from, to)}
                       onDragPieceSelect={(r, c) => void onSquareClick(r, c)}
@@ -536,7 +526,7 @@ export function GamePlayPage() {
                     />
                   </div>
 
-                  <div className="mt-auto shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                  <div className="mt-auto shrink-0 pt-0.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                     <PlayerStatsStrip
                       board={board}
                       player={stripBottom.player}

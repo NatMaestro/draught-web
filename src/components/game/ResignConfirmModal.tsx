@@ -43,16 +43,21 @@ export function ResignConfirmModal({
             exit={{ opacity: 0 }}
             onClick={onCancel}
           />
-          <motion.div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            initial={{ opacity: 0, scale: 0.96, y: 8 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 8 }}
-            transition={{ type: "spring", damping: 28, stiffness: 360 }}
-            className="fixed left-1/2 top-1/2 z-[83] w-[min(92vw,380px)] max-h-[min(90dvh,520px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-header/30 bg-sheet p-6 shadow-2xl"
+          {/* Flex centering so Framer transform animations don’t strip translate(-50%,-50%) */}
+          <div
+            className="pointer-events-none fixed inset-0 z-[83] flex items-center justify-center p-4 sm:p-6"
+            role="presentation"
           >
+            <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              initial={{ opacity: 0, scale: 0.96, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 8 }}
+              transition={{ type: "spring", damping: 28, stiffness: 360 }}
+              className="pointer-events-auto max-h-[min(90dvh,520px)] w-full max-w-[380px] overflow-y-auto rounded-2xl border border-header/30 bg-sheet p-5 shadow-2xl sm:p-6"
+            >
             <h2
               id={titleId}
               className="text-lg font-bold text-text"
@@ -80,7 +85,8 @@ export function ResignConfirmModal({
                 Resign
               </button>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       ) : null}
     </AnimatePresence>

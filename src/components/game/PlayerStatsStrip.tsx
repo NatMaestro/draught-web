@@ -41,31 +41,31 @@ export function PlayerStatsStrip({
   const isDock = theme === "dock";
   const ring = isDock
     ? isActiveTurn
-      ? "ring-2 ring-amber-400/70 ring-offset-2 ring-offset-slate-900 bg-amber-500/10"
+      ? "ring-1 ring-offset-1 ring-amber-400/70 ring-offset-slate-900 bg-amber-500/10 sm:ring-2 sm:ring-offset-2"
       : "border-white/10 bg-slate-800/60"
     : isActiveTurn
-      ? "ring-2 ring-active/80 ring-offset-2 ring-offset-cream bg-active/20"
+      ? "ring-1 ring-offset-1 ring-active/80 ring-offset-cream bg-active/20 sm:ring-2 sm:ring-offset-2"
       : "border-header/25 bg-sheet/80";
 
   return (
     <div
       className={[
-        "w-full max-w-[min(92vw,720px)] border px-1.5 py-1.5 text-[10px] shadow-sm backdrop-blur-sm sm:px-2.5 sm:py-2 sm:text-xs",
+        "w-full max-w-[min(92vw,720px)] border px-1 py-1 text-[10px] shadow-sm backdrop-blur-sm sm:px-2.5 sm:py-2 sm:text-xs",
         isDock ? "rounded-xl text-slate-200" : "text-text",
         variant === "top"
           ? isDock
-            ? "mb-2 rounded-b-xl rounded-t-lg border-b-2 border-amber-900/40"
-            : "mb-2 rounded-b-2xl rounded-t-lg border-b-2 border-header/30"
+            ? "mb-1.5 rounded-b-xl rounded-t-lg border-b-2 border-amber-900/40 sm:mb-2"
+            : "mb-1.5 rounded-b-2xl rounded-t-lg border-b-2 border-header/30 sm:mb-2"
           : isDock
-            ? "mt-2 rounded-b-lg rounded-t-xl border-t-2 border-amber-900/40"
-            : "mt-2 rounded-b-lg rounded-t-2xl border-t-2 border-header/30",
+            ? "mt-1.5 rounded-b-lg rounded-t-xl border-t-2 border-amber-900/40 sm:mt-2"
+            : "mt-1.5 rounded-b-lg rounded-t-2xl border-t-2 border-header/30 sm:mt-2",
         ring,
       ].join(" ")}
     >
-      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:gap-x-3 sm:gap-y-2">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold sm:h-9 sm:w-9 sm:text-[11px] ${
               avatarUsername
                 ? ""
                 : isDock
@@ -77,13 +77,13 @@ export function PlayerStatsStrip({
           >
             {avatarUsername ? initialsFromUsername(avatarUsername) : player}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 leading-tight">
             <p
-              className={`truncate font-bold ${isDock ? "text-amber-50" : "text-text"}`}
+              className={`truncate text-[11px] font-bold sm:text-sm ${isDock ? "text-amber-50" : "text-text"}`}
             >
               {label}
             </p>
-            <p className={isDock ? "text-slate-400" : "text-muted"}>
+            <p className={`text-[9px] sm:text-[10px] ${isDock ? "text-slate-400" : "text-muted"}`}>
               <span className={isDock ? "font-semibold text-slate-200" : "font-semibold text-text"}>
                 {m.total}
               </span>{" "}
@@ -95,10 +95,10 @@ export function PlayerStatsStrip({
             </p>
           </div>
         </div>
-        <div className="flex min-w-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+        <div className="flex min-w-0 flex-col items-end gap-0 sm:flex-row sm:items-center sm:gap-3">
           {timerSeconds != null ? (
             <div
-              className={`flex flex-col items-end tabular-nums ${
+              className={`flex flex-row items-baseline gap-1 tabular-nums sm:flex-col sm:items-end sm:gap-0 ${
                 timerActive
                   ? isDock
                     ? "text-amber-200"
@@ -109,16 +109,16 @@ export function PlayerStatsStrip({
               }`}
               title={timerActive ? "Clock running (on move)" : "Clock paused"}
             >
-              <span className="text-[9px] uppercase tracking-wide opacity-80">
+              <span className="text-[8px] uppercase tracking-wide opacity-80 sm:text-[9px]">
                 Time
               </span>
-              <span className="text-sm font-bold sm:text-base">
+              <span className="text-xs font-bold tabular-nums sm:text-sm md:text-base">
                 {formatClock(timerSeconds)}
               </span>
             </div>
           ) : null}
           <span
-            className={`text-[10px] uppercase tracking-wide ${isDock ? "text-slate-500" : "text-muted"}`}
+            className={`text-[9px] uppercase tracking-wide sm:text-[10px] ${isDock ? "text-slate-500" : "text-muted"}`}
           >
             Captured
             {capturedPieceValues.length > 0 ? (
