@@ -1,10 +1,16 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
+import { safeReturnTo } from "@/lib/deepLink";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const afterLogin = useMemo(
+    () => safeReturnTo(searchParams.get("returnTo")),
+    [searchParams],
+  );
   const login = useAuthStore((s) => s.login);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -14,7 +20,7 @@ export function LoginPage() {
     setError("");
     const result = await login(username, password);
     if (result.ok) {
-      navigate("/home", { replace: true });
+      navigate(afterLogin, { replace: true });
     } else {
       setError(result.error ?? "Login failed");
     }
@@ -24,7 +30,7 @@ export function LoginPage() {
     "flex flex-row items-center rounded-xl px-4 py-3.5 mb-3 bg-sheet/90 border border-header/10";
 
   return (
-    <div className="min-h-[100dvh] bg-cream px-6 pt-12">
+    <div className="min-h-[100dvh] bg-cream safe-x pt-[max(3rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-md">
         <div className="mb-8 flex items-center gap-2">
           <Link to="/home" className="text-xl text-text hover:underline">
@@ -89,7 +95,10 @@ export function LoginPage() {
         </motion.button>
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
-          <Link to="/auth/register" className="font-semibold text-text underline">
+          <Link
+            to={`/auth/register?returnTo=${encodeURIComponent(afterLogin)}`}
+            className="font-semibold text-text underline"
+          >
             Create one
           </Link>
         </p>

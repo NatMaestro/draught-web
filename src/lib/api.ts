@@ -1,16 +1,120 @@
-import axios, { type AxiosInstance } from "axios";
+import axios, {
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import { API_BASE_URL } from "@/lib/config";
+
+export const STORAGE_ACCESS = "draught_access_token";
+export const STORAGE_REFRESH = "draught_refresh_token";
+
+function readStorage(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStorage(key: string, value: string | null) {
+  try {
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
+function readRefreshToken(): string | null {
+  return readStorage(STORAGE_REFRESH);
+}
+
+let accessToken: string | null = null;
+
+/** In-memory bearer used by the request interceptor. */
+export function setApiToken(token: string | null) {
+  accessToken = token;
+}
+
+/** Persist access token + update in-memory (used after login / refresh). */
+export function persistAccessToken(token: string | null) {
+  accessToken = token;
+  writeStorage(STORAGE_ACCESS, token);
+}
+
+export function persistRefreshToken(token: string | null) {
+  writeStorage(STORAGE_REFRESH, token);
+}
+
+/** Load access token from localStorage into memory (e.g. before first request). */
+export function loadPersistedAccessIntoMemory(): string | null {
+  const t = readStorage(STORAGE_ACCESS);
+  accessToken = t;
+  return t;
+}
+
+type RefreshFailedHandler = () => void;
+type AccessRefreshedHandler = (access: string) => void;
+
+let refreshFailedHandler: RefreshFailedHandler | null = null;
+let accessRefreshedHandler: AccessRefreshedHandler | null = null;
+
+/** Register in `main.tsx` to sync Zustand after silent refresh (e.g. WebSocket URL). */
+export function setAccessTokenRefreshedHandler(
+  handler: AccessRefreshedHandler | null,
+) {
+  accessRefreshedHandler = handler;
+}
+
+/** Register in `main.tsx` to logout when refresh token is invalid/expired. */
+export function setRefreshFailedHandler(handler: RefreshFailedHandler | null) {
+  refreshFailedHandler = handler;
+}
+
+/** Axios instance without auth interceptors — only for POST /auth/token/refresh/. */
+const rawRefreshClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: { "Content-Type": "application/json" },
+});
+
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Exchange refresh JWT for a new access token. Single-flight: concurrent callers await one request.
+ */
+export function refreshAccessToken(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  const refresh = readRefreshToken();
+  if (!refresh) {
+    return Promise.resolve(null);
+  }
+  refreshInFlight = (async () => {
+    try {
+      const { data } = await rawRefreshClient.post<{ access: string }>(
+        "/auth/token/refresh/",
+        { refresh },
+      );
+      const newAccess = data.access;
+      persistAccessToken(newAccess);
+      accessRefreshedHandler?.(newAccess);
+      return newAccess;
+    } catch {
+      persistAccessToken(null);
+      persistRefreshToken(null);
+      setApiToken(null);
+      refreshFailedHandler?.();
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+  return refreshInFlight;
+}
 
 const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
 });
-
-let accessToken: string | null = null;
-
-export function setApiToken(token: string | null) {
-  accessToken = token;
-}
 
 api.interceptors.request.use((config) => {
   if (accessToken) {
@@ -18,6 +122,46 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+function isAuthPath(url: string): boolean {
+  return (
+    url.includes("/auth/login/") ||
+    url.includes("/auth/register/") ||
+    url.includes("/auth/token/refresh/")
+  );
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: unknown) => {
+    const err = error as {
+      config?: InternalAxiosRequestConfig & { __retry?: boolean };
+      response?: { status?: number };
+    };
+    const original = err.config;
+    const status = err.response?.status;
+    const url = String(original?.url ?? "");
+
+    if (
+      status !== 401 ||
+      !original ||
+      original.__retry ||
+      isAuthPath(url)
+    ) {
+      return Promise.reject(error);
+    }
+
+    const newAccess = await refreshAccessToken();
+    if (!newAccess) {
+      return Promise.reject(error);
+    }
+
+    original.__retry = true;
+    original.headers = original.headers ?? {};
+    original.headers.Authorization = `Bearer ${newAccess}`;
+    return api(original as AxiosRequestConfig);
+  },
+);
 
 export interface LoginResponse {
   access: string;
@@ -37,6 +181,15 @@ export const authApi = {
   register: (data: RegisterPayload) => api.post("/auth/register/", data),
 };
 
+/** Server-authoritative clock (GET game, move responses, WebSocket). */
+export type ServerClockSnapshot = {
+  p1_time_remaining_sec: number;
+  p2_time_remaining_sec: number;
+  turn_started_at: string | null;
+  server_now: string;
+  time_control_sec: number;
+};
+
 /** Move / ai-move response from Django `MoveView` / `AiMoveView`. */
 export interface MoveResponse {
   board: number[][];
@@ -46,14 +199,55 @@ export interface MoveResponse {
   captured: Array<{ row: number; col: number }>;
   /** Cell values (1–4) on the pre-move board for each `captured` square (trophy icons). */
   captured_piece_values?: number[];
+  /** Present when backend supports server clocks. */
+  p1_time_remaining_sec?: number;
+  p2_time_remaining_sec?: number;
+  turn_started_at?: string | null;
+  server_now?: string;
+  time_control_sec?: number;
+  /** Ply count after this move (matches `moves.length` on GET game). */
+  move_count?: number;
 }
 
-/** Single ply as stored by Django `Move` (one row per human/AI move). */
+/** Single ply — replay may include `captured` squares (from `GET /games/:id/`). */
 export type GameMoveApi = {
   from_row: number;
   from_col: number;
   to_row: number;
   to_col: number;
+  player?: number;
+  captured?: Array<{ row: number; col: number }>;
+};
+
+/** Nested on GET /games/:id/ for online human vs human. */
+export type GamePlayerPublic = {
+  id: number;
+  username: string;
+};
+
+/** Row from `GET /api/games/history/` (paginated `results`). */
+export type GameHistoryItem = {
+  id: string;
+  status: string;
+  current_turn: number;
+  winner: number | string | null;
+  is_ai_game: boolean;
+  is_ranked: boolean;
+  is_local_2p: boolean;
+  created_at: string;
+  finished_at: string | null;
+  player_one: GamePlayerPublic | null;
+  player_two: GamePlayerPublic | null;
+  move_count: number;
+};
+
+export type GameChallenge = {
+  id: string;
+  from_user: GamePlayerPublic;
+  to_user: GamePlayerPublic;
+  rematch_game: string | null;
+  status: string;
+  created_at: string;
 };
 
 /** GET /games/:id/ — aligns with GameSerializer. */
@@ -69,13 +263,22 @@ export interface GameDetail {
   is_local_2p?: boolean;
   ai_difficulty?: string;
   is_ranked?: boolean;
-  player_one?: number | string | null;
-  player_two?: number | string | null;
+  /** Online PvP: `{ id, username }`; legacy may be a bare id. */
+  player_one?: GamePlayerPublic | number | string | null;
+  player_two?: GamePlayerPublic | number | string | null;
   winner?: number | string | null;
   created_at?: string;
   finished_at?: string | null;
   /** Undo allowed (AI / local guest games with at least one move). */
   can_undo?: boolean;
+  /** Server clock (when supported). */
+  p1_time_remaining_sec?: number;
+  p2_time_remaining_sec?: number;
+  turn_started_at?: string | null;
+  server_now?: string;
+  time_control_sec?: number;
+  /** When false, no clocks or time loss. */
+  use_clock?: boolean;
 }
 
 /** POST /games/:id/undo/ */
@@ -87,6 +290,11 @@ export interface UndoResponse {
   p1_captured_piece_values: number[];
   p2_captured_piece_values: number[];
   can_undo: boolean;
+  p1_time_remaining_sec?: number;
+  p2_time_remaining_sec?: number;
+  turn_started_at?: string | null;
+  server_now?: string;
+  time_control_sec?: number;
 }
 
 export type CreateGameOptions = {
@@ -95,6 +303,10 @@ export type CreateGameOptions = {
   aiDifficulty?: string;
   /** Same-device hot-seat — must create ACTIVE game (no second account). */
   isLocal2p?: boolean;
+  /** Initial bank per player in seconds when `useClock` is true. */
+  timeControlSec?: number;
+  /** When false, server does not enforce clocks or time loss. */
+  useClock?: boolean;
 };
 
 export const gamesApi = {
@@ -103,18 +315,26 @@ export const gamesApi = {
       typeof isAi === "object" && isAi !== null
         ? isAi
         : { isAi: Boolean(isAi), aiDifficulty: difficulty };
-    return api.post<GameDetail>("/games/", {
+    const body: Record<string, unknown> = {
       ...(opts.isAi && {
         is_ai: true,
         ai_difficulty: opts.aiDifficulty ?? "medium",
       }),
       ...(opts.isLocal2p && { is_local_2p: true }),
-    });
+    };
+    if (typeof opts.useClock === "boolean") {
+      body.use_clock = opts.useClock;
+    }
+    if (opts.timeControlSec != null && Number.isFinite(opts.timeControlSec)) {
+      body.time_control_sec = Math.round(opts.timeControlSec);
+    }
+    return api.post<GameDetail>("/games/", body);
   },
 
   get: (id: string) => api.get<GameDetail>(`/games/${id}/`),
 
-  history: () => api.get<{ results: GameDetail[] }>("/games/history/"),
+  history: () =>
+    api.get<{ count?: number; results: GameHistoryItem[] }>("/games/history/"),
 
   move: (
     id: string,
@@ -144,13 +364,64 @@ export const gamesApi = {
     }>(`/games/${id}/legal-moves/?row=${row}&col=${col}`),
 };
 
+export const challengesApi = {
+  incoming: () =>
+    api.get<{ count?: number; results: GameChallenge[] }>(
+      "/games/challenges/incoming/",
+    ),
+  create: (to_user_id: number, rematch_game_id?: string) =>
+    api.post<GameChallenge>("/games/challenges/", {
+      to_user_id,
+      ...(rematch_game_id ? { rematch_game_id } : {}),
+    }),
+  accept: (challengeId: string) =>
+    api.post<{ game_id: string; game: GameDetail }>(
+      `/games/challenges/${challengeId}/accept/`,
+    ),
+  decline: (challengeId: string) =>
+    api.post<{ ok: boolean }>(`/games/challenges/${challengeId}/decline/`),
+};
+
+export type MatchmakingJoinOptions = {
+  ranked?: boolean;
+  timeControlSec?: number;
+  useClock?: boolean;
+};
+
 export const matchmakingApi = {
-  join: (ranked?: boolean) =>
+  join: (ranked?: boolean, opts?: MatchmakingJoinOptions) =>
     api.post<{ status: "matched" | "queued"; game_id?: string }>(
       "/matchmaking/join/",
-      { ranked: ranked ?? false },
+      {
+        ranked: opts?.ranked ?? ranked ?? false,
+        ...(typeof opts?.useClock === "boolean" && { use_clock: opts.useClock }),
+        ...(opts?.timeControlSec != null &&
+          Number.isFinite(opts.timeControlSec) && {
+            time_control_sec: Math.round(opts.timeControlSec),
+          }),
+      },
     ),
-  cancel: () => api.post("/matchmaking/cancel/"),
+  cancel: (ranked?: boolean) =>
+    api.post<{ removed: boolean }>("/matchmaking/cancel/", {
+      ranked: ranked ?? false,
+    }),
+  /** Poll after join returned `queued` — picks up game when an opponent is found. */
+  ready: () =>
+    api.get<{ status: "matched" | "waiting"; game_id?: string }>(
+      "/matchmaking/ready/",
+    ),
+};
+
+export const usersApi = {
+  profile: () =>
+    api.get<{
+      id: number;
+      username: string;
+      email: string;
+      rating: number;
+      games_played: number;
+      games_won: number;
+    }>("/users/profile/"),
 };
 
 export default api;

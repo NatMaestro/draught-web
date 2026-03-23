@@ -1,6 +1,7 @@
 import type { MoveRecord } from "@/hooks/useGamePlay";
 import type { WsChatMessage } from "@/hooks/useGameWebSocket";
 import { GameChatPanel } from "@/components/game/GameChatPanel";
+import { GamePlayMobileHud } from "@/components/game/GamePlayMobileHud";
 
 function formatMove(m: MoveRecord | null | undefined, index: number): string {
   if (m == null) return `${index + 1}. (move)`;
@@ -76,7 +77,8 @@ export function GamePlayRightPanel({
     canUndo && movesForDisplay.length > 0 && !busy && !gameOver;
 
   return (
-    <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-t border-header/20 bg-sheet/90 lg:border-l lg:border-t-0 xl:h-full xl:max-h-full xl:w-[min(100%,320px)] xl:min-w-[300px] xl:flex-none xl:shrink-0 xl:self-stretch">
+    <>
+    <div className="hidden min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden border-t border-header/20 bg-sheet/90 md:flex md:border-l md:border-t-0 md:h-full md:max-h-full md:w-[min(100%,320px)] md:min-w-[280px] md:flex-none md:shrink-0 md:self-stretch">
       <div className="shrink-0 border-b border-header/20 px-3 py-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -204,5 +206,28 @@ export function GamePlayRightPanel({
         </div>
       </div>
     </div>
+
+    <GamePlayMobileHud
+      turnLabel={turnLabel}
+      moveError={moveError}
+      moveHistory={moveHistory}
+      hintMessage={hintMessage}
+      showChat={showChat}
+      chatMessages={chatMessages}
+      sendChatMessage={sendChatMessage}
+      chatSenderLabel={chatSenderLabel}
+      chatDisabled={chatDisabled}
+      wsConnected={wsConnected}
+      onResign={onResign}
+      canUndo={canUndo}
+      onUndo={onUndo}
+      onHint={onHint}
+      onDownload={onDownload}
+      onSettings={onSettings}
+      onOpenRules={onOpenRules}
+      busy={busy}
+      gameOver={gameOver}
+    />
+    </>
   );
 }

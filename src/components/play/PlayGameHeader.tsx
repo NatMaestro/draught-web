@@ -5,7 +5,7 @@ export function PlayGameHeader() {
   return (
     <div className="w-full overflow-visible">
       <header className="w-full overflow-hidden bg-header">
-        <div className="px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="pb-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="relative flex min-h-[44px] items-center justify-between">
             <Link
               to="/home"

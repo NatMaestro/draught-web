@@ -37,7 +37,7 @@ export function ResignConfirmModal({
           <motion.button
             type="button"
             aria-label="Dismiss resign confirmation"
-            className="fixed inset-0 z-[60] bg-black/50"
+            className="fixed inset-0 z-[82] bg-black/50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -51,7 +51,7 @@ export function ResignConfirmModal({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ type: "spring", damping: 28, stiffness: 360 }}
-            className="fixed left-1/2 top-1/2 z-[61] w-[min(92vw,380px)] -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-header/30 bg-sheet p-6 shadow-2xl"
+            className="fixed left-1/2 top-1/2 z-[83] w-[min(92vw,380px)] max-h-[min(90dvh,520px)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-header/30 bg-sheet p-6 shadow-2xl"
           >
             <h2
               id={titleId}

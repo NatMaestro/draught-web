@@ -46,9 +46,17 @@ npm run dev
 
 - `/` — Splash → `/home`
 - `/home`, `/puzzle`, `/train`, `/more` — tab shell (bottom bar mobile, sidebar xl)
-- `/play` — Play a game (mirrors RN `play-a-game`)
+- `/play` — Play hub: **Start** = online matchmaking; time control applies to online / friends / tournaments; **Play in person** = local 2P; **Play with friends** = invites (placeholder); bots & tournaments linked with optional `?minutes=`
+- `/play/matchmaking` — Online PvP queue (casual / ranked); requires **sign-in** and API **Redis** for queues
 - `/auth/*` — Get started, login, register
 - `/play/local`, `/play/matchmaking`, … — placeholders for game flows
+- `/play/game/:gameId` — **deep link** to a live match (shareable URL). Hosts must serve `index.html` for all paths (`public/_redirects` on Netlify; `render.yaml` rewrites for Render).
+
+### Deep links & auth
+
+- Opening `/play/game/<uuid>` directly loads that game (no `/play` hub modal).
+- After login/register, `?returnTo=<path>` redirects back (e.g. `?returnTo=/play/game/<uuid>`). Only same-origin paths starting with `/` are allowed (`src/lib/deepLink.ts`).
+- Play hub supports `/play?returnTo=/play/game/<uuid>` to send post-login users back into a match.
 
 ## Assets
 

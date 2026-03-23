@@ -11,7 +11,7 @@ const links = [
 
 export function DesktopSidebar() {
   return (
-    <aside className="hidden w-[280px] shrink-0 flex-col border-r border-header/20 bg-header/90 py-8 pl-6 pr-4 backdrop-blur-xl xl:flex">
+    <aside className="hidden w-[280px] shrink-0 flex-col border-r border-header/20 bg-header/90 py-8 pl-6 pr-4 backdrop-blur-xl md:flex">
       <div className="mb-10 px-2">
         <div className="font-display text-3xl font-normal tracking-tight text-text">
           Draught

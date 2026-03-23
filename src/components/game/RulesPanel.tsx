@@ -64,7 +64,7 @@ export function RulesHelpModal({ open, onClose }: RulesHelpModalProps) {
           <motion.button
             type="button"
             aria-label="Close rules"
-            className="fixed inset-0 z-[45] bg-black/45"
+            className="fixed inset-0 z-[75] bg-black/45"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -78,7 +78,7 @@ export function RulesHelpModal({ open, onClose }: RulesHelpModalProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.98 }}
             transition={{ type: "spring", damping: 28, stiffness: 320 }}
-            className="fixed left-1/2 top-[max(12%,env(safe-area-inset-top))] z-[46] max-h-[min(78dvh,640px)] w-[min(92vw,400px)] -translate-x-1/2 overflow-y-auto rounded-2xl border border-header/25 bg-cream p-5 shadow-lift"
+            className="fixed left-1/2 top-[max(12%,env(safe-area-inset-top))] z-[76] max-h-[min(78dvh,640px)] w-[min(92vw,400px)] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-y-auto rounded-2xl border border-header/25 bg-cream p-5 shadow-lift"
           >
             <div className="mb-4 flex items-start justify-between gap-3">
               <h2
@@ -117,17 +117,24 @@ export function RulesHelpModal({ open, onClose }: RulesHelpModalProps) {
 export function RulesHeaderIconButton({
   onClick,
   expanded,
+  variant = "default",
 }: {
   onClick: () => void;
   expanded: boolean;
+  /** `dark` — light icon on glass/dark headers (e.g. mobile play screens). */
+  variant?: "default" | "dark";
 }) {
+  const tone =
+    variant === "dark"
+      ? "bg-white/10 text-white hover:bg-white/15"
+      : "bg-black/10 text-text hover:bg-black/15";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label="How this game works"
       aria-expanded={expanded}
-      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/10 text-text transition hover:bg-black/15 active:scale-95"
+      className={`touch-manipulation flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition active:scale-95 ${tone}`}
     >
       <svg
         width="22"

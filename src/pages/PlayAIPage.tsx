@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Board } from "@/components/game/Board";
 import { GamePlayErrorBoundary } from "@/components/game/GamePlayErrorBoundary";
 import { GamePlaySidebar } from "@/components/game/GamePlaySidebar";
@@ -22,8 +22,23 @@ function pickDefaultBot(): BotDef {
 /**
  * Layout matches `/play/game/:id`: sidebar → board column → right panel (bots) → ad column.
  */
+function parseMinutes(raw: string | null): number | null {
+  if (raw == null || raw === "") return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 && n <= 120 ? n : null;
+}
+
 export function PlayAIPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const minutesFromHub = useMemo(
+    () => parseMinutes(searchParams.get("minutes")),
+    [searchParams],
+  );
+  const useClockFromHub = useMemo(
+    () => searchParams.get("clock") !== "off",
+    [searchParams],
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<BotDef>(pickDefaultBot);
@@ -38,6 +53,11 @@ export function PlayAIPage() {
       const { data } = await gamesApi.create({
         isAi: true,
         aiDifficulty: selected.engineKey,
+        useClock: useClockFromHub,
+        ...(useClockFromHub &&
+          minutesFromHub != null && {
+            timeControlSec: minutesFromHub * 60,
+          }),
       });
       navigate(`/play/game/${data.id}`, { replace: true });
     } catch {
@@ -47,21 +67,30 @@ export function PlayAIPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-cream text-text">
-      {/* Mobile: same top bar pattern as GamePlayPage */}
-      <header className="z-30 flex shrink-0 items-center justify-between gap-2 border-b border-header/25 bg-header px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden">
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-cream bg-mesh-radial text-text">
+      {/* Mobile: slim glass header — nav duplicated in sidebar on md+ */}
+      <header className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-b from-[#1e1a14]/92 to-[#12100c]/95 py-2.5 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md md:hidden">
         <Link
           to="/play"
-          className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-semibold text-text hover:bg-black/10"
+          className="touch-manipulation shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white/95 shadow-sm transition active:scale-[0.98] min-h-[44px] flex items-center"
         >
           ← Menu
         </Link>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-sm font-bold text-text">Draught</p>
-          <p className="truncate text-xs text-text/80">Play bots</p>
+          <p className="truncate font-display text-base tracking-wide text-white">
+            Play vs AI
+          </p>
+          <p className="truncate text-[11px] text-cyan-200/70">
+            {!useClockFromHub
+              ? "No clock — casual"
+              : minutesFromHub != null
+                ? `Clock from menu: ${minutesFromHub} min`
+                : "Pick an opponent below"}
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <RulesHeaderIconButton
+            variant="dark"
             expanded={rulesOpen}
             onClick={() => setRulesOpen((o) => !o)}
           />
@@ -71,14 +100,17 @@ export function PlayAIPage() {
 
       <RulesHelpModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <GamePlaySidebar onOpenRules={() => setRulesOpen(true)} />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <GamePlaySidebar
+          className="hidden md:flex"
+          onOpenRules={() => setRulesOpen(true)}
+        />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <GamePlayErrorBoundary>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row xl:items-stretch">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row md:items-stretch">
               {/* Board column — same structure as GamePlayPage */}
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-4">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-24 pt-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
                 <div className="mx-auto flex min-h-0 w-full max-w-[min(100%,720px)] flex-1 flex-col">
                   <PlayerStatsStrip
                     board={previewBoard}
@@ -128,7 +160,7 @@ export function PlayAIPage() {
 
               {/* Ad slot — same as GamePlayPage */}
               <aside
-                className="hidden min-h-0 w-[min(300px,28vw)] shrink-0 self-stretch overflow-hidden border-l border-header/20 bg-sheet/60 xl:flex xl:flex-col"
+                className="hidden min-h-0 w-[min(300px,28vw)] shrink-0 self-stretch overflow-hidden border-l border-header/20 bg-sheet/60 lg:flex lg:flex-col"
                 aria-label="Advertisement"
               >
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-start overflow-hidden p-4">

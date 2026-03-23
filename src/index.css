@@ -20,4 +20,16 @@
   .safe-pb {
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
   }
+  /** Horizontal insets for notched phones / landscape */
+  .safe-x {
+    padding-left: max(1rem, env(safe-area-inset-left, 0px));
+    padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  }
+  .safe-x-tight {
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  }
+  .pt-safe {
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
 }

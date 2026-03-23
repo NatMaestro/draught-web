@@ -42,7 +42,7 @@ export function GameChatPanel({
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">
           Chat {connected ? "" : "(offline)"}
         </p>
-        <div className="flex max-h-36 flex-col rounded-lg border border-header/25 bg-cream/90">
+        <div className="flex max-h-[min(40vh,260px)] flex-col rounded-lg border border-header/25 bg-cream/90 sm:max-h-40">
           <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-2 py-2 text-[11px]">
             {messages.length === 0 ? (
               <p className="text-center text-muted">No messages yet.</p>

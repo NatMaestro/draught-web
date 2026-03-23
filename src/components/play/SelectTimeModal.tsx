@@ -23,7 +23,11 @@ type SelectTimeModalProps = {
   visible: boolean;
   onClose: () => void;
   selectedMinutes: number;
+  /** When false, the user chose an untimed game (no clocks). */
+  useClock?: boolean;
   onSelectMinutes: (minutes: number) => void;
+  /** Turn off clocks for new games (online / local / AI links use this). */
+  onSelectNoTimeLimit?: () => void;
   sections?: readonly TimeSection[];
   headerBottomOffsetPx?: number;
 };
@@ -32,7 +36,9 @@ export function SelectTimeModal({
   visible,
   onClose,
   selectedMinutes,
+  useClock = true,
   onSelectMinutes,
+  onSelectNoTimeLimit,
   sections = DEFAULT_SECTIONS,
   headerBottomOffsetPx = 0,
 }: SelectTimeModalProps) {
@@ -99,6 +105,27 @@ export function SelectTimeModal({
                 </div>
               </div>
               <div className="max-h-[min(70vh,520px)] overflow-y-auto px-4 pb-3 pt-2">
+                {onSelectNoTimeLimit ? (
+                  <div className="mb-4">
+                    <p className="mb-2 text-sm font-semibold text-text">
+                      Clocks off
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onSelectNoTimeLimit();
+                        onClose();
+                      }}
+                      className={`w-full rounded-xl px-4 py-3 text-left text-sm font-semibold transition ${
+                        !useClock
+                          ? "bg-active text-text shadow-md"
+                          : "bg-sheet text-text hover:bg-muted/20"
+                      }`}
+                    >
+                      No time limit — casual games without clocks
+                    </button>
+                  </div>
+                ) : null}
                 {sections.map((section) => (
                   <div key={section.id} className="mb-4">
                     <p className="mb-1 text-sm font-semibold text-text">
@@ -122,7 +149,7 @@ export function SelectTimeModal({
                               onClose();
                             }}
                             className={`min-w-[64px] rounded-xl px-4 py-2.5 text-sm font-semibold transition ${
-                              selected
+                              selected && useClock
                                 ? "bg-active text-text shadow-md"
                                 : "bg-sheet text-text hover:bg-muted/20"
                             }`}

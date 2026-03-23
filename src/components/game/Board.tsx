@@ -31,6 +31,11 @@ export type BoardProps = {
   /** AI games: last square the opponent (bot) moved to — stays until the human moves. */
   botLastMoveTo?: [number, number] | null;
   disabled?: boolean;
+  /**
+   * When false, pieces are not draggable and taps do nothing (e.g. online — not your turn).
+   * Local 2P should stay true so both sides use the same device on their turn.
+   */
+  canInteract?: boolean;
   /** 180° rotation duration (ms); from measured API/WebSocket latency in local 2P. */
   rotationDurationMs?: number;
 };
@@ -104,6 +109,7 @@ export function Board({
   hintDestination = null,
   botLastMoveTo = null,
   disabled,
+  canInteract = true,
   rotationDurationMs = DEFAULT_BOARD_ROTATION_MS,
 }: BoardProps) {
   const rotationMs = Math.min(
@@ -262,7 +268,7 @@ export function Board({
     [onSquareClick],
   );
 
-  const interactionDisabled = disabled || rotationLocked;
+  const interactionDisabled = disabled || rotationLocked || !canInteract;
 
   const handlePiecePointerDown = (
     e: React.PointerEvent,
@@ -390,7 +396,7 @@ export function Board({
 
   return (
     <div
-      className="mx-auto aspect-square w-[min(100%,92vw,680px,max(12rem,calc(100dvh-11rem)))] max-w-full min-w-[12rem] min-h-0 shrink-0 select-none"
+      className="mx-auto aspect-square w-[min(100%,92vw,680px,max(12rem,calc(100dvh-12.5rem)))] max-w-full min-w-[12rem] min-h-0 shrink-0 select-none touch-manipulation"
       role="grid"
       aria-label="Draught board — tap or drag pieces"
     >
@@ -456,6 +462,12 @@ export function Board({
               ].join(" ")}
               onKeyDown={(ke) => {
                 if (interactionDisabled) return;
+                if (
+                  cell !== 0 &&
+                  !isOwnPiece(cell, currentTurn)
+                ) {
+                  return;
+                }
                 if (ke.key === "Enter" || ke.key === " ") {
                   ke.preventDefault();
                   onSquareClick(lr, lc);
@@ -463,6 +475,12 @@ export function Board({
               }}
               onClick={() => {
                 if (interactionDisabled) return;
+                if (
+                  cell !== 0 &&
+                  !isOwnPiece(cell, currentTurn)
+                ) {
+                  return;
+                }
                 if (suppressNextClickRef.current) {
                   suppressNextClickRef.current = false;
                   return;
@@ -513,7 +531,9 @@ export function Board({
       {floatingPiece}
       {onDragMove ? (
         <p className="mt-1.5 text-center text-[10px] leading-tight text-muted sm:text-xs">
-          Drag to move, or tap a piece then a square. Wrong turn = warning sound.
+          {canInteract
+            ? "Drag to move, or tap a piece then a square."
+            : "Wait for your turn — opponent to move."}
         </p>
       ) : null}
     </div>

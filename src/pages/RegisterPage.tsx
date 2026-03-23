@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
+import { setGuestPlayAcknowledged } from "@/lib/playSession";
+import { safeReturnTo } from "@/lib/deepLink";
 
 function BoardLogo() {
   const size = 4;
@@ -47,6 +49,10 @@ function BoardLogo() {
 export function RegisterPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const afterRegister = useMemo(
+    () => safeReturnTo(searchParams.get("returnTo")),
+    [searchParams],
+  );
   const initialEmail = useMemo(() => searchParams.get("email") ?? "", [searchParams]);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState(initialEmail);
@@ -68,7 +74,7 @@ export function RegisterPage() {
       password_confirm: passwordConfirm,
     });
     if (result.ok) {
-      navigate("/home", { replace: true });
+      navigate(afterRegister, { replace: true });
     } else {
       setError(result.error ?? "Registration failed");
     }
@@ -78,13 +84,16 @@ export function RegisterPage() {
     "mb-3 w-full rounded-xl border border-header/10 bg-sheet/90 px-4 py-3.5 text-base text-text placeholder:text-muted outline-none focus:ring-2 focus:ring-active/50";
 
   return (
-    <div className="min-h-[100dvh] bg-cream px-6 py-6">
+    <div className="min-h-[100dvh] bg-cream safe-x py-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="mx-auto max-w-md">
         <div className="flex items-center justify-between py-2">
           <Link to="/auth/get-started" className="text-base text-text hover:underline">
             ← Back
           </Link>
-          <Link to="/auth/login" className="text-base font-bold text-text hover:underline">
+          <Link
+            to={`/auth/login?returnTo=${encodeURIComponent(afterRegister)}`}
+            className="text-base font-bold text-text hover:underline"
+          >
             Log In
           </Link>
         </div>
@@ -142,7 +151,10 @@ export function RegisterPage() {
         </motion.button>
         <button
           type="button"
-          onClick={() => navigate("/home", { replace: true })}
+          onClick={() => {
+            setGuestPlayAcknowledged();
+            navigate("/play", { replace: true });
+          }}
           className="mt-4 w-full text-center text-sm text-muted underline"
         >
           Play as guest

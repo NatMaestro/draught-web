@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useLocation,
+  useSearchParams,
+} from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { Board } from "@/components/game/Board";
 import { GamePlayRightPanel } from "@/components/game/GamePlayRightPanel";
@@ -7,22 +13,33 @@ import { GamePlayErrorBoundary } from "@/components/game/GamePlayErrorBoundary";
 import { GamePlaySidebar } from "@/components/game/GamePlaySidebar";
 import { PlayerStatsStrip } from "@/components/game/PlayerStatsStrip";
 import { ResignConfirmModal } from "@/components/game/ResignConfirmModal";
+import { GuestExitConfirmModal } from "@/components/game/GuestExitConfirmModal";
 import {
   RulesHelpModal,
   RulesHeaderIconButton,
 } from "@/components/game/RulesPanel";
 import { useGamePlay } from "@/hooks/useGamePlay";
+import { useGameClock } from "@/hooks/useGameClock";
 import { useGameSettingsStore } from "@/store/gameSettingsStore";
 import { useAuthStore } from "@/store/authStore";
+import { absoluteGameUrl } from "@/lib/deepLink";
+import { getGameOutcomeCopy } from "@/lib/gameOutcome";
+import { GameOverOverlay } from "@/components/game/GameOverOverlay";
 
 const SHOW_GAME_CHAT = import.meta.env.VITE_USE_GAME_WS !== "false";
 
 export function GamePlayPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { gameId } = useParams<{ gameId: string }>();
+  const [searchParams] = useSearchParams();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
+  const [guestExitBusy, setGuestExitBusy] = useState(false);
+  const [guestExitModalOpen, setGuestExitModalOpen] = useState(false);
+  const pendingGuestNavigateRef = useRef<(() => void) | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { username, isAuthenticated } = useAuthStore();
 
@@ -47,6 +64,17 @@ export function GamePlayPage() {
     winner,
     status,
     isAiGame,
+    isRanked,
+    isLocal2p,
+    isOnlinePvp,
+    mySeat,
+    playerOneProfile,
+    playerTwoProfile,
+    serverClock,
+    endedByResign,
+    endedByTimeout,
+    useClock,
+    canInteract,
     selectedPiece,
     possibleMoves,
     busy,
@@ -69,27 +97,258 @@ export function GamePlayPage() {
     requestHint,
     undoLastMove,
     downloadGameRecord,
+    confirmedTurnForFlip,
   } = useGamePlay(gameId);
 
   const gameOver =
     winner != null || status === "finished" || status === "abandoned";
 
-  const turnLabel = isAiGame
-    ? currentTurn === 1
-      ? "Your turn"
-      : "AI thinking…"
-    : currentTurn === 1
-      ? "Player 1 to move"
-      : "Player 2 to move";
+  const opponentUsername = useMemo(() => {
+    if (!isOnlinePvp || mySeat == null) return null;
+    if (mySeat === 1) return playerTwoProfile?.username ?? null;
+    return playerOneProfile?.username ?? null;
+  }, [isOnlinePvp, mySeat, playerOneProfile, playerTwoProfile]);
 
-  const labelP1 =
-    isAiGame && isAuthenticated && username
-      ? `You (${username})`
-      : isAiGame
-        ? "You"
-        : "Player 1";
+  const gameOutcome = useMemo(() => {
+    const winnerSeat = winner === 1 || winner === 2 ? winner : null;
+    return getGameOutcomeCopy({
+      winnerSeat,
+      endedByResign,
+      endedByTimeout,
+      isAiGame,
+      isLocal2p,
+      isOnlinePvp,
+      mySeat,
+      username: username ?? null,
+      opponentUsername,
+    });
+  }, [
+    winner,
+    endedByResign,
+    endedByTimeout,
+    isAiGame,
+    isLocal2p,
+    isOnlinePvp,
+    mySeat,
+    username,
+    opponentUsername,
+  ]);
 
-  const labelP2 = isAiGame ? "AI" : "Player 2";
+  const minutesForClock = useMemo(() => {
+    const raw = searchParams.get("minutes");
+    if (raw == null || raw === "") return 10;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) && n > 0 && n <= 120 ? n : 10;
+  }, [searchParams]);
+
+  /** Clocks follow server-confirmed turn so timers switch only after move API/WS ack. */
+  const { p1Seconds, p2Seconds } = useGameClock(
+    gameId,
+    minutesForClock,
+    confirmedTurnForFlip,
+    status,
+    gameOver,
+    serverClock,
+    busy,
+    useClock,
+  );
+
+  const shouldBlockGuestExit = useMemo(
+    () =>
+      !isAuthenticated &&
+      !loading &&
+      !loadError &&
+      !gameOver,
+    [isAuthenticated, loading, loadError, gameOver],
+  );
+
+  /** Guest leave: forfeit then run pending navigation (replaces useBlocker — works with BrowserRouter + Data Router). */
+  const requestGuestNavigate = useCallback(
+    (to: string) => {
+      if (shouldBlockGuestExit) {
+        pendingGuestNavigateRef.current = () => {
+          navigate(to);
+        };
+        setGuestExitModalOpen(true);
+      } else {
+        navigate(to);
+      }
+    },
+    [shouldBlockGuestExit, navigate],
+  );
+
+  useEffect(() => {
+    if (!shouldBlockGuestExit) return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [shouldBlockGuestExit]);
+
+  const handleGuestExitForfeit = useCallback(async () => {
+    setGuestExitBusy(true);
+    try {
+      const ok = await resign();
+      if (ok) {
+        const run = pendingGuestNavigateRef.current;
+        pendingGuestNavigateRef.current = null;
+        setGuestExitModalOpen(false);
+        run?.();
+      }
+    } finally {
+      setGuestExitBusy(false);
+    }
+  }, [resign]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    const short = gameId.slice(0, 8);
+    const prev = document.title;
+    document.title = `Draught · Game ${short}`;
+    return () => {
+      document.title = prev;
+    };
+  }, [gameId]);
+
+  const loginReturnTo = encodeURIComponent(
+    `${location.pathname}${location.search}`,
+  );
+
+  const handleCopyGameLink = useCallback(async () => {
+    if (!gameId) return;
+    const url = absoluteGameUrl(gameId);
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2000);
+    } catch {
+      /* clipboard denied */
+    }
+  }, [gameId]);
+
+  const handleShareGameLink = useCallback(async () => {
+    if (!gameId) return;
+    const url = absoluteGameUrl(gameId);
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: "Draught game",
+          text: "Open this match on Draught",
+          url,
+        });
+      } else {
+        await handleCopyGameLink();
+      }
+    } catch {
+      /* cancelled or failed */
+    }
+  }, [gameId, handleCopyGameLink]);
+
+  const turnLabel = useMemo(() => {
+    if (isAiGame) {
+      return confirmedTurnForFlip === 1 ? "Your turn" : "AI thinking…";
+    }
+    if (isOnlinePvp && mySeat != null) {
+      return confirmedTurnForFlip === mySeat ? "Your turn" : "Opponent's turn";
+    }
+    return currentTurn === 1 ? "Player 1 to move" : "Player 2 to move";
+  }, [isAiGame, isOnlinePvp, mySeat, currentTurn, confirmedTurnForFlip]);
+
+  const modeSubtitle = isAiGame
+    ? "vs AI"
+    : isLocal2p
+      ? "Local 2P"
+      : isRanked
+        ? "Ranked online"
+        : "Casual online";
+
+  /** Top / bottom strips: online PvP = opponent above, you below + avatars; else legacy P2 top / P1 bottom. */
+  const { stripTop, stripBottom } = useMemo(() => {
+    const clockRunning = useClock && !gameOver && status === "active";
+    if (
+      isOnlinePvp &&
+      mySeat != null &&
+      playerOneProfile &&
+      playerTwoProfile
+    ) {
+      const oppSeat = mySeat === 1 ? 2 : 1;
+      const oppProf = oppSeat === 1 ? playerOneProfile : playerTwoProfile;
+      const meProf = mySeat === 1 ? playerOneProfile : playerTwoProfile;
+      return {
+        stripTop: {
+          player: oppSeat as 1 | 2,
+          label: oppProf.username,
+          avatarUsername: oppProf.username,
+          caps: oppSeat === 1 ? p1CapturedPieces : p2CapturedPieces,
+          isActiveTurn: confirmedTurnForFlip === oppSeat,
+          timerSeconds: useClock
+            ? oppSeat === 1
+              ? p1Seconds
+              : p2Seconds
+            : undefined,
+          timerActive: clockRunning && confirmedTurnForFlip === oppSeat,
+        },
+        stripBottom: {
+          player: mySeat,
+          label: meProf.username,
+          avatarUsername: meProf.username,
+          caps: mySeat === 1 ? p1CapturedPieces : p2CapturedPieces,
+          isActiveTurn: confirmedTurnForFlip === mySeat,
+          timerSeconds: useClock
+            ? mySeat === 1
+              ? p1Seconds
+              : p2Seconds
+            : undefined,
+          timerActive: clockRunning && confirmedTurnForFlip === mySeat,
+        },
+      };
+    }
+    const labelP1 =
+      isAiGame && isAuthenticated && username
+        ? `You (${username})`
+        : isAiGame
+          ? "You"
+          : "Player 1";
+    const labelP2 = isAiGame ? "AI" : "Player 2";
+    return {
+      stripTop: {
+        player: 2 as const,
+        label: labelP2,
+        avatarUsername: undefined as string | undefined,
+        caps: p2CapturedPieces,
+        isActiveTurn: confirmedTurnForFlip === 2,
+        timerSeconds: useClock ? p2Seconds : undefined,
+        timerActive: clockRunning && confirmedTurnForFlip === 2,
+      },
+      stripBottom: {
+        player: 1 as const,
+        label: labelP1,
+        avatarUsername:
+          isAiGame && isAuthenticated && username ? username : undefined,
+        caps: p1CapturedPieces,
+        isActiveTurn: confirmedTurnForFlip === 1,
+        timerSeconds: p1Seconds,
+        timerActive: clockRunning && confirmedTurnForFlip === 1,
+      },
+    };
+  }, [
+    isOnlinePvp,
+    mySeat,
+    playerOneProfile,
+    playerTwoProfile,
+    isAiGame,
+    isAuthenticated,
+    username,
+    p1CapturedPieces,
+    p2CapturedPieces,
+    confirmedTurnForFlip,
+    p1Seconds,
+    p2Seconds,
+    gameOver,
+    status,
+    useClock,
+  ]);
 
   const handleConfirmResign = () => {
     void resign().then((ok) => {
@@ -100,23 +359,35 @@ export function GamePlayPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream text-text">
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream bg-mesh-radial text-text">
       {/* Mobile: compact top bar — matches Home / app header */}
       <header
-        className="z-30 flex shrink-0 items-center justify-between gap-2 border-b border-header/25 bg-header px-2 py-2 pt-[max(0.5rem,env(safe-area-inset-top))] lg:hidden"
+        className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-b from-[#1e1a14]/92 to-[#12100c]/95 py-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md md:hidden"
       >
         <Link
           to="/play"
-          className="shrink-0 rounded-lg px-2 py-1.5 text-sm font-semibold text-text hover:bg-black/10"
+          onClick={(e) => {
+            if (shouldBlockGuestExit) {
+              e.preventDefault();
+              requestGuestNavigate("/play");
+            }
+          }}
+          className="touch-manipulation shrink-0 rounded-xl border border-white/10 bg-white/5 px-2.5 py-2.5 text-sm font-semibold text-white/95 transition active:scale-[0.98] min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           ← Menu
         </Link>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate text-sm font-bold text-text">Draught</p>
-          <p className="truncate text-xs text-text/80">{turnLabel}</p>
+          <p className="truncate font-display text-base tracking-wide text-white">
+            Draught
+          </p>
+          <p className="truncate text-[11px] text-cyan-200/75">
+            {turnLabel}
+            <span className="text-cyan-400/60"> · {modeSubtitle}</span>
+          </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <RulesHeaderIconButton
+            variant="dark"
             expanded={rulesOpen}
             onClick={() => {
               setRulesOpen((o) => !o);
@@ -129,13 +400,39 @@ export function GamePlayPage() {
               setSettingsOpen(true);
               setRulesOpen(false);
             }}
-            className="rounded-lg bg-black/10 px-2.5 py-1.5 text-xs font-semibold text-text hover:bg-black/15"
+            className="touch-manipulation min-h-[44px] min-w-[44px] rounded-xl border border-white/10 bg-white/5 px-2.5 text-xs font-semibold text-white/95 hover:bg-white/10 flex items-center justify-center"
             aria-expanded={settingsOpen}
           >
             Settings
           </button>
         </div>
       </header>
+
+      {!isAuthenticated && !loading && !loadError && !gameOver ? (
+        <div className="safe-x shrink-0 border-b border-amber-200/40 bg-amber-50/95 py-2.5 text-center text-[11px] leading-snug text-text sm:text-xs">
+          <Link
+            to={`/auth/login?returnTo=${loginReturnTo}`}
+            onClick={(e) => {
+              if (shouldBlockGuestExit) {
+                e.preventDefault();
+                requestGuestNavigate(`/auth/login?returnTo=${loginReturnTo}`);
+              }
+            }}
+            className="font-semibold underline decoration-header decoration-2"
+          >
+            Sign in
+          </Link>{" "}
+          to save progress and open this match from any device (
+          <button
+            type="button"
+            onClick={() => void handleCopyGameLink()}
+            className="font-semibold text-text underline decoration-header decoration-2"
+          >
+            {linkCopied ? "copied!" : "copy link"}
+          </button>
+          ).
+        </div>
+      ) : null}
 
       <RulesHelpModal open={rulesOpen} onClose={() => setRulesOpen(false)} />
 
@@ -146,8 +443,29 @@ export function GamePlayPage() {
         isAiGame={isAiGame}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <GamePlaySidebar onOpenRules={() => setRulesOpen(true)} />
+      <GuestExitConfirmModal
+        open={guestExitModalOpen}
+        busy={guestExitBusy}
+        onStay={() => {
+          setGuestExitModalOpen(false);
+          pendingGuestNavigateRef.current = null;
+        }}
+        onLeaveAndForfeit={() => void handleGuestExitForfeit()}
+      />
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
+        <GamePlaySidebar
+          className="hidden md:flex"
+          onOpenRules={() => setRulesOpen(true)}
+          onPlayMenuNavigate={
+            shouldBlockGuestExit
+              ? () => requestGuestNavigate("/play")
+              : undefined
+          }
+          onHomeNavigate={
+            shouldBlockGuestExit ? () => requestGuestNavigate("/") : undefined
+          }
+        />
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {loading ? (
@@ -164,6 +482,12 @@ export function GamePlayPage() {
               </p>
               <Link
                 to="/play"
+                onClick={(e) => {
+                  if (shouldBlockGuestExit) {
+                    e.preventDefault();
+                    requestGuestNavigate("/play");
+                  }
+                }}
                 className="mt-4 font-semibold text-text underline decoration-header decoration-2"
               >
                 Back to play menu
@@ -171,16 +495,19 @@ export function GamePlayPage() {
             </div>
           ) : (
             <GamePlayErrorBoundary>
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden xl:flex-row">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
               {/* Board column: top stats, flex board, bottom stats pinned to viewport bottom */}
-              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-2 pt-2 sm:px-4">
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-28 pt-2 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] sm:pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1rem,env(safe-area-inset-right))] md:pb-2">
                 <div className="mx-auto flex min-h-0 w-full max-w-[min(100%,720px)] flex-1 flex-col">
                   <PlayerStatsStrip
                     board={board}
-                    player={2}
-                    label={labelP2}
-                    capturedPieceValues={p2CapturedPieces}
-                    isActiveTurn={currentTurn === 2}
+                    player={stripTop.player}
+                    label={stripTop.label}
+                    avatarUsername={stripTop.avatarUsername}
+                    timerSeconds={stripTop.timerSeconds}
+                    timerActive={stripTop.timerActive}
+                    capturedPieceValues={stripTop.caps}
+                    isActiveTurn={stripTop.isActiveTurn}
                     variant="top"
                     theme="cream"
                   />
@@ -205,16 +532,20 @@ export function GamePlayPage() {
                       onDragMove={(from, to) => void attemptMove(from, to)}
                       onDragPieceSelect={(r, c) => void onSquareClick(r, c)}
                       disabled={busy || gameOver}
+                      canInteract={canInteract}
                     />
                   </div>
 
                   <div className="mt-auto shrink-0 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
                     <PlayerStatsStrip
                       board={board}
-                      player={1}
-                      label={labelP1}
-                      capturedPieceValues={p1CapturedPieces}
-                      isActiveTurn={currentTurn === 1}
+                      player={stripBottom.player}
+                      label={stripBottom.label}
+                      avatarUsername={stripBottom.avatarUsername}
+                      timerSeconds={stripBottom.timerSeconds}
+                      timerActive={stripBottom.timerActive}
+                      capturedPieceValues={stripBottom.caps}
+                      isActiveTurn={stripBottom.isActiveTurn}
                       variant="bottom"
                       theme="cream"
                     />
@@ -254,7 +585,7 @@ export function GamePlayPage() {
 
               {/* Ad slot — reserve space for AdSense */}
               <aside
-                className="hidden w-[min(300px,28vw)] shrink-0 border-l border-header/20 bg-sheet/60 xl:flex xl:min-h-0 xl:flex-col xl:overflow-hidden"
+                className="hidden w-[min(300px,28vw)] shrink-0 border-l border-header/20 bg-sheet/60 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden"
                 aria-label="Advertisement"
               >
                 <div className="flex min-h-0 flex-1 flex-col items-center justify-start p-4">
@@ -280,7 +611,7 @@ export function GamePlayPage() {
             <motion.button
               type="button"
               aria-label="Close settings"
-              className="fixed inset-0 z-40 bg-black/50"
+              className="fixed inset-0 z-[78] bg-black/50"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -291,10 +622,10 @@ export function GamePlayPage() {
               animate={{ x: 0 }}
               exit={{ x: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="fixed bottom-0 right-0 top-0 z-50 flex w-full max-w-sm flex-col border-l border-header/25 bg-sheet shadow-2xl"
+              className="fixed bottom-0 right-0 top-0 z-[79] flex w-full max-w-sm flex-col border-l border-header/25 bg-sheet shadow-2xl pt-[env(safe-area-inset-top,0px)]"
             >
               <div
-                className="flex items-center justify-between border-b border-header/25 px-4 py-4"
+                className="flex items-center justify-between border-b border-header/25 px-4 py-4 safe-x"
                 style={{ backgroundColor: "#D8A477" }}
               >
                 <h2 className="text-lg font-bold text-text">Game settings</h2>
@@ -306,7 +637,7 @@ export function GamePlayPage() {
                   Done
                 </button>
               </div>
-              <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-4 py-6 text-text">
+              <div className="safe-x flex flex-1 flex-col gap-6 overflow-y-auto overflow-x-hidden py-6 text-text">
                 <label className="flex cursor-pointer items-center justify-between gap-3">
                   <span className="text-sm font-medium">Sound effects</span>
                   <input
@@ -349,6 +680,32 @@ export function GamePlayPage() {
                     You play as Player 1 (bottom). AI is Player 2.
                   </p>
                 )}
+                <div className="flex flex-col gap-2 rounded-xl border border-header/20 bg-cream/50 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
+                    Link to this game
+                  </p>
+                  <p className="text-xs text-muted">
+                    Share or bookmark this URL to reopen the same match.
+                  </p>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => void handleCopyGameLink()}
+                      className="flex-1 rounded-xl border border-header/30 bg-sheet py-2.5 text-sm font-semibold text-text hover:bg-sheet/90"
+                    >
+                      {linkCopied ? "Copied!" : "Copy link"}
+                    </button>
+                    {typeof navigator.share === "function" ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleShareGameLink()}
+                        className="flex-1 rounded-xl border border-header/30 bg-sheet py-2.5 text-sm font-semibold text-text hover:bg-sheet/90"
+                      >
+                        Share…
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
                 <button
                   type="button"
                   disabled={busy || gameOver}
@@ -360,7 +717,13 @@ export function GamePlayPage() {
                 <Link
                   to="/play"
                   className="text-center text-sm font-semibold text-text underline decoration-header decoration-2"
-                  onClick={() => setSettingsOpen(false)}
+                  onClick={(e) => {
+                    setSettingsOpen(false);
+                    if (shouldBlockGuestExit) {
+                      e.preventDefault();
+                      requestGuestNavigate("/play");
+                    }
+                  }}
                 >
                   Leave game (menu)
                 </Link>
@@ -370,39 +733,16 @@ export function GamePlayPage() {
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {gameOver ? (
-          <motion.div
-            className="fixed inset-0 z-30 flex items-center justify-center bg-black/60 px-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              initial={{ scale: 0.94, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="max-w-sm rounded-2xl border border-header/30 bg-sheet p-8 text-center shadow-2xl"
-            >
-              <p className="font-display text-2xl text-text">
-                {winner === 1
-                  ? "Player 1 wins"
-                  : winner === 2
-                    ? isAiGame
-                      ? "AI wins"
-                      : "Player 2 wins"
-                    : "Game over"}
-              </p>
-              <Link
-                to="/play"
-                className="mt-6 inline-flex rounded-full px-8 py-3 text-sm font-bold text-text shadow-md"
-                style={{ backgroundColor: "#EFCA83" }}
-              >
-                Back to menu
-              </Link>
-            </motion.div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <GameOverOverlay
+        open={gameOver}
+        copy={gameOutcome}
+        onNavigatePlay={(e) => {
+          if (shouldBlockGuestExit) {
+            e.preventDefault();
+            requestGuestNavigate("/play");
+          }
+        }}
+      />
     </div>
   );
 }

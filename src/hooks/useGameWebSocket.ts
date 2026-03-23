@@ -15,6 +15,10 @@ export type WsMovePayload = {
   winner: number | null;
   status: string;
   captured: Array<{ row: number; col: number }>;
+  /** Ply count after this move — used to ignore stale `game_state` snapshots. */
+  move_count?: number;
+  /** Present when the game ended on time (loss by clock). */
+  end_reason?: string;
 };
 
 export type WsGameOverPayload = {
@@ -34,6 +38,9 @@ export type WsGameStatePayload = {
   is_ai_game?: boolean;
   ai_difficulty?: string;
   chat?: WsChatMessage[];
+  move_count?: number;
+  /** True when this snapshot follows an undo — allows lower `move_count` than last applied. */
+  undo_applied?: boolean;
 };
 
 type UseGameWebSocketOptions = {

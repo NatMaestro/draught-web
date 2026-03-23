@@ -7,7 +7,7 @@ export function MorePage() {
   const { isAuthenticated, username, logout } = useAuthStore();
 
   return (
-    <div className="px-4 pb-28 pt-6 md:pt-10">
+    <div className="safe-x pb-28 pt-[max(1.5rem,env(safe-area-inset-top))] md:pb-8 md:pt-10">
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}

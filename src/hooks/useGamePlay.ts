@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { gamesApi, type GameDetail, type MoveResponse } from "@/lib/api";
+import {
+  gamesApi,
+  type GameDetail,
+  type GamePlayerPublic,
+  type MoveResponse,
+} from "@/lib/api";
 import {
   playGameOverSound,
   playMoveSound,
@@ -12,6 +17,9 @@ import {
   type WsChatMessage,
   type WsGameStatePayload,
 } from "@/hooks/useGameWebSocket";
+import { parseClockSnapshot } from "@/hooks/useGameClock";
+import type { ServerClockSnapshot } from "@/lib/api";
+import { winnerSeatFromGameDetail } from "@/lib/gameOutcome";
 import {
   applyOptimisticMove,
   computeCaptureJumpWaypoints,
@@ -38,6 +46,15 @@ import {
 
 /** Set `VITE_USE_GAME_WS=false` to force REST-only moves. */
 const USE_GAME_WS = import.meta.env.VITE_USE_GAME_WS !== "false";
+
+function parsePlayerRef(raw: unknown): GamePlayerPublic | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const o = raw as Record<string, unknown>;
+  const id = typeof o.id === "number" ? o.id : Number(o.id);
+  const un = o.username;
+  if (!Number.isFinite(id) || typeof un !== "string" || !un.trim()) return null;
+  return { id, username: un.trim() };
+}
 
 /**
  * Django POST /move/ returns `board`; some proxies/clients may differ.
@@ -85,7 +102,14 @@ function normalizeMoveResponse(raw: unknown): MoveResponse | null {
   const cpvParsed = Array.isArray(cpvRaw)
     ? cpvRaw.map((x) => toNum(x))
     : undefined;
-  return {
+  const mcRaw = o.move_count ?? o.moveCount;
+  const move_count =
+    typeof mcRaw === "number" && Number.isFinite(mcRaw)
+      ? mcRaw
+      : typeof mcRaw === "string" && mcRaw.trim() !== ""
+        ? toNum(mcRaw)
+        : undefined;
+  const out: MoveResponse = {
     board,
     current_turn,
     winner: toWinner(o.winner),
@@ -96,6 +120,14 @@ function normalizeMoveResponse(raw: unknown): MoveResponse | null {
         captured_piece_values: cpvParsed,
       }),
   };
+  if (
+    move_count !== undefined &&
+    Number.isFinite(move_count) &&
+    move_count >= 0
+  ) {
+    out.move_count = Math.floor(move_count);
+  }
+  return out;
 }
 
 function sanitizeTurn(t: unknown): 1 | 2 {
@@ -175,6 +207,7 @@ export function useGamePlay(gameId: string | undefined) {
   const rotateBoardForTurn = useGameSettingsStore((s) => s.rotateBoardForTurn);
   const accessToken = useAuthStore((s) => s.accessToken);
   const username = useAuthStore((s) => s.username);
+  const userId = useAuthStore((s) => s.userId);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   const [loading, setLoading] = useState(true);
@@ -184,6 +217,13 @@ export function useGamePlay(gameId: string | undefined) {
   const [winner, setWinner] = useState<number | null>(null);
   const [status, setStatus] = useState<string>("active");
   const [isAiGame, setIsAiGame] = useState(false);
+  const [isRanked, setIsRanked] = useState(false);
+  const [isLocal2p, setIsLocal2p] = useState(false);
+  /** Online PvP seat labels / board orientation (from GET /games/:id/). */
+  const [playerOneProfile, setPlayerOneProfile] =
+    useState<GamePlayerPublic | null>(null);
+  const [playerTwoProfile, setPlayerTwoProfile] =
+    useState<GamePlayerPublic | null>(null);
   const [selectedPiece, setSelectedPiece] = useState<[number, number] | null>(
     null,
   );
@@ -193,6 +233,25 @@ export function useGamePlay(gameId: string | undefined) {
   /** Cell values (1–4) of opponent pieces captured by each player (for UI trophies). */
   const [p1CapturedPieces, setP1CapturedPieces] = useState<number[]>([]);
   const [p2CapturedPieces, setP2CapturedPieces] = useState<number[]>([]);
+  /** Server-authoritative clock; null until load or if backend has no clock fields. */
+  const [serverClock, setServerClock] = useState<ServerClockSnapshot | null>(
+    null,
+  );
+  /** True when the last finish was by resignation (WebSocket or local resign). */
+  const [endedByResign, setEndedByResign] = useState(false);
+  /** True when the game ended because a player ran out of time. */
+  const [endedByTimeout, setEndedByTimeout] = useState(false);
+  /** Server flag: clocks and time loss are active (false = untimed). */
+  const [useClock, setUseClock] = useState(true);
+  useEffect(() => {
+    setServerClock(null);
+    setEndedByResign(false);
+    setEndedByTimeout(false);
+    setUseClock(true);
+  }, [gameId]);
+  useEffect(() => {
+    lastAppliedMoveCountRef.current = 0;
+  }, [gameId]);
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   /** Highlight destination square for Hint (row, col). */
@@ -231,6 +290,11 @@ export function useGamePlay(gameId: string | undefined) {
   const pendingCaptureValuesRef = useRef<number[] | null>(null);
   /** Bump to cancel in-flight multi-capture step animation. */
   const captureAnimTokenRef = useRef(0);
+  /**
+   * Last applied ply count (matches server `moves.length`). Used to drop stale `game_state`
+   * (e.g. reconnect `join_game`) that would overwrite `current_turn` after a `move_update`.
+   */
+  const lastAppliedMoveCountRef = useRef(0);
 
   const rollbackOptimistic = useCallback(() => {
     captureAnimTokenRef.current += 1;
@@ -305,6 +369,9 @@ export function useGamePlay(gameId: string | undefined) {
   );
 
   const hydrateFromGame = useCallback((data: GameDetail) => {
+    if (!isAuthenticated) {
+      clearResumeSnapshot();
+    }
     const bs = data.board_state;
     setBoard(
       Array.isArray(bs) && bs.length === BOARD_SIZE
@@ -317,7 +384,12 @@ export function useGamePlay(gameId: string | undefined) {
     const st = data.status ?? "active";
     setStatus(st);
     setIsAiGame(Boolean(data.is_ai_game));
-    setWinner(null);
+    setIsRanked(Boolean(data.is_ranked));
+    setIsLocal2p(Boolean(data.is_local_2p));
+    setUseClock(data.use_clock !== false);
+    setPlayerOneProfile(parsePlayerRef(data.player_one));
+    setPlayerTwoProfile(parsePlayerRef(data.player_two));
+    setWinner(winnerSeatFromGameDetail(data));
     setMoveHistory(mapApiMovesToMoveRecords(data.moves));
     lastMoveRef.current = null;
     setCanUndo(Boolean(data.can_undo));
@@ -329,6 +401,7 @@ export function useGamePlay(gameId: string | undefined) {
     const resume = loadResumeSnapshot();
     const active = st === "active";
     if (
+      isAuthenticated &&
       active &&
       resume?.gameId === gid &&
       Array.isArray(resume.p1CapturedPieces) &&
@@ -343,7 +416,11 @@ export function useGamePlay(gameId: string | undefined) {
     if (!active && resume?.gameId === gid) {
       clearResumeSnapshot();
     }
-  }, []);
+    const clkHydrate = parseClockSnapshot(data as unknown);
+    setServerClock(clkHydrate);
+    const plyCount = Array.isArray(data.moves) ? data.moves.length : 0;
+    lastAppliedMoveCountRef.current = plyCount;
+  }, [isAuthenticated]);
 
   /** Source of truth after any move: GET matches Django DB (board + turn). */
   const syncBoardAndTurnFromServer = useCallback(async (): Promise<GameDetail | null> => {
@@ -358,10 +435,20 @@ export function useGamePlay(gameId: string | undefined) {
       setCurrentTurn(ct);
       setConfirmedTurnForFlip(ct);
       setStatus(data.status ?? "active");
+      setIsRanked(Boolean(data.is_ranked));
+      setIsLocal2p(Boolean(data.is_local_2p));
+      setUseClock(data.use_clock !== false);
+      setPlayerOneProfile(parsePlayerRef(data.player_one));
+      setPlayerTwoProfile(parsePlayerRef(data.player_two));
       if (typeof data.can_undo === "boolean") {
         setCanUndo(data.can_undo);
       }
       setMoveHistory(mapApiMovesToMoveRecords(data.moves));
+      setWinner(winnerSeatFromGameDetail(data));
+      const clkSync = parseClockSnapshot(data as unknown);
+      setServerClock(clkSync);
+      const plyCount = Array.isArray(data.moves) ? data.moves.length : 0;
+      lastAppliedMoveCountRef.current = plyCount;
       return data;
     } catch (e: unknown) {
       logMove("sync GET failed", { detail: String(e) });
@@ -411,6 +498,9 @@ export function useGamePlay(gameId: string | undefined) {
         recordRotationLatencyFromMoveStart();
       }
       applyMovePayload(normalized, setters);
+      if (normalized.move_count != null) {
+        lastAppliedMoveCountRef.current = normalized.move_count;
+      }
       setSelectedPiece(null);
       setPossibleMoves([]);
       if (wasOurPending && lastMoveRef.current) {
@@ -432,6 +522,19 @@ export function useGamePlay(gameId: string | undefined) {
         setBusy(false);
       }
       pendingWsMoveRef.current = false;
+      const rawPl = payload as { use_clock?: boolean };
+      if (typeof rawPl.use_clock === "boolean") {
+        setUseClock(rawPl.use_clock);
+      }
+      const clk = parseClockSnapshot(payload);
+      setServerClock(clk);
+      if (normalized.winner != null) {
+        setEndedByResign(false);
+      }
+      const endReason = (payload as { end_reason?: string }).end_reason;
+      if (endReason === "timeout") {
+        setEndedByTimeout(true);
+      }
     },
     onGameState: (p: WsGameStatePayload) => {
       if (Array.isArray(p.chat)) {
@@ -444,6 +547,18 @@ export function useGamePlay(gameId: string | undefined) {
           })),
         );
       }
+      const mc = p.move_count;
+      const last = lastAppliedMoveCountRef.current;
+      const undo = p.undo_applied === true;
+      if (
+        typeof mc === "number" &&
+        Number.isFinite(mc) &&
+        !undo &&
+        mc < last
+      ) {
+        logMove("game_state ignored (stale move_count)", { mc, last });
+        return;
+      }
       if (p.board && Array.isArray(p.board) && p.board.length === BOARD_SIZE) {
         setBoard(normalizeBoardState(p.board));
         const ct = sanitizeTurn(p.current_turn);
@@ -453,15 +568,27 @@ export function useGamePlay(gameId: string | undefined) {
         if (typeof p.winner === "number") setWinner(p.winner);
         else setWinner(null);
       }
+      if (typeof mc === "number" && Number.isFinite(mc) && mc >= 0) {
+        lastAppliedMoveCountRef.current = Math.floor(mc);
+      }
+      const rawP = p as { use_clock?: boolean };
+      if (typeof rawP.use_clock === "boolean") {
+        setUseClock(rawP.use_clock);
+      }
+      const clk = parseClockSnapshot(p as unknown);
+      setServerClock(clk);
     },
     onGameOver: (p) => {
       if (p.reason === "resign") {
+        setEndedByResign(true);
+        setEndedByTimeout(false);
         setStatus("finished");
         if (typeof p.winner === "number") setWinner(p.winner);
         else setWinner(null);
         playGameOverSound(soundEnabled);
         setBusy(false);
       }
+      void syncBoardAndTurnFromServer();
     },
     onChatMessage: (msg) => {
       setChatMessages((prev) => [
@@ -505,6 +632,19 @@ export function useGamePlay(gameId: string | undefined) {
       setMoveError(null);
       try {
         const { data } = await gamesApi.aiMove(gameId);
+        const dRec =
+          data && typeof data === "object"
+            ? (data as unknown as Record<string, unknown>)
+            : null;
+        if (
+          dRec?.end_reason === "timeout" ||
+          dRec?.detail === "timeout"
+        ) {
+          setEndedByTimeout(true);
+          setEndedByResign(false);
+        }
+        const clkAi = parseClockSnapshot(data);
+        if (clkAi) setServerClock(clkAi);
         const aiNorm = normalizeMoveResponse(data);
         logMove("AI (server)", {
           currentTurn: data.current_turn,
@@ -557,6 +697,9 @@ export function useGamePlay(gameId: string | undefined) {
           );
           if (aiTo) setLastBotMoveTo(aiTo);
           applyMovePayload(aiNorm, setters);
+          if (aiNorm.winner != null) {
+            setEndedByResign(false);
+          }
         }
         await syncBoardAndTurnFromServer();
         if (!aiMultiCaptureAnimated) {
@@ -588,12 +731,62 @@ export function useGamePlay(gameId: string | undefined) {
     ],
   );
 
+  /** Human vs human over network (not AI, not same-device 2P). */
+  const isOnlinePvp = useMemo(() => {
+    if (isAiGame || isLocal2p) return false;
+    return playerOneProfile != null && playerTwoProfile != null;
+  }, [isAiGame, isLocal2p, playerOneProfile, playerTwoProfile]);
+
+  /** Current user's seat — online PvP only; prefers profile id, falls back to username match. */
+  const mySeat = useMemo((): 1 | 2 | null => {
+    if (!isOnlinePvp) return null;
+    if (userId != null) {
+      if (playerOneProfile?.id === userId) return 1;
+      if (playerTwoProfile?.id === userId) return 2;
+    }
+    if (username) {
+      if (playerOneProfile?.username === username) return 1;
+      if (playerTwoProfile?.username === username) return 2;
+    }
+    return null;
+  }, [isOnlinePvp, userId, username, playerOneProfile, playerTwoProfile]);
+
+  const flipBoard = useMemo(() => {
+    if (isAiGame) return false;
+    if (isLocal2p) {
+      if (!rotateBoardForTurn) return false;
+      return confirmedTurnForFlip === 2;
+    }
+    // Online PvP: each player sees their own pieces at the bottom.
+    if (mySeat === 2) return true;
+    return false;
+  }, [isAiGame, isLocal2p, rotateBoardForTurn, confirmedTurnForFlip, mySeat]);
+
+  /** Only the side whose turn it is may move — online: your seat only; AI: human (P1) on their turn. */
+  const canInteract = useMemo(() => {
+    if (status !== "active") return false;
+    if (winner != null) return false;
+    if (isOnlinePvp) {
+      return mySeat != null && currentTurn === mySeat;
+    }
+    if (isAiGame) {
+      return currentTurn === 1;
+    }
+    return true;
+  }, [status, winner, isOnlinePvp, mySeat, currentTurn, isAiGame]);
+
   const attemptMove = useCallback(
     async (from: [number, number], to: [number, number]) => {
       if (!gameId || busy || winner != null || status !== "active") {
         if (gameId && (busy || winner != null || status !== "active")) {
           logMove("attempt skipped", { busy, winner, status });
         }
+        return;
+      }
+
+      if (!canInteract) {
+        playWarningSound(soundEnabled);
+        setMoveError("Not your turn.");
         return;
       }
 
@@ -734,6 +927,19 @@ export function useGamePlay(gameId: string | undefined) {
               optimisticSnapshotRef.current?.board ?? boardRef.current;
             optimisticSnapshotRef.current = null;
             const normalized = normalizeMoveResponse(raw);
+            const rawRec =
+              raw && typeof raw === "object"
+                ? (raw as unknown as Record<string, unknown>)
+                : null;
+            if (
+              rawRec?.end_reason === "timeout" ||
+              rawRec?.detail === "timeout"
+            ) {
+              setEndedByTimeout(true);
+              setEndedByResign(false);
+            }
+            const clkMove = parseClockSnapshot(raw);
+            if (clkMove) setServerClock(clkMove);
             logMove("OK (human)", {
               player: mover,
               from: [fromRow, fromCol],
@@ -749,6 +955,9 @@ export function useGamePlay(gameId: string | undefined) {
               addCapturesForMover(mover, normalized, boardForCaptures);
               recordRotationLatencyFromMoveStart();
               applyMovePayload(normalized, setters);
+              if (normalized.winner != null) {
+                setEndedByResign(false);
+              }
               if (lastMoveRef.current) {
                 const recorded = lastMoveRef.current;
                 lastMoveRef.current = null;
@@ -838,6 +1047,19 @@ export function useGamePlay(gameId: string | undefined) {
           optimisticSnapshotRef.current?.board ?? boardRef.current;
         optimisticSnapshotRef.current = null;
         const normalized = normalizeMoveResponse(raw);
+        const rawRec2 =
+          raw && typeof raw === "object"
+            ? (raw as unknown as Record<string, unknown>)
+            : null;
+        if (
+          rawRec2?.end_reason === "timeout" ||
+          rawRec2?.detail === "timeout"
+        ) {
+          setEndedByTimeout(true);
+          setEndedByResign(false);
+        }
+        const clkMove2 = parseClockSnapshot(raw);
+        if (clkMove2) setServerClock(clkMove2);
         logMove("OK (human)", {
           player: mover,
           from: [fromRow, fromCol],
@@ -853,6 +1075,9 @@ export function useGamePlay(gameId: string | undefined) {
           addCapturesForMover(mover, normalized, boardForCaptures);
           recordRotationLatencyFromMoveStart();
           applyMovePayload(normalized, setters);
+          if (normalized.winner != null) {
+            setEndedByResign(false);
+          }
           if (lastMoveRef.current) {
             const recorded = lastMoveRef.current;
             lastMoveRef.current = null;
@@ -906,6 +1131,7 @@ export function useGamePlay(gameId: string | undefined) {
       sendMove,
       rollbackOptimistic,
       recordRotationLatencyFromMoveStart,
+      canInteract,
     ],
   );
 
@@ -932,6 +1158,17 @@ export function useGamePlay(gameId: string | undefined) {
           try {
             const { data: aiData } = await gamesApi.aiMove(gameId);
             if (cancelled) return;
+            const aiRec =
+              aiData && typeof aiData === "object"
+                ? (aiData as unknown as Record<string, unknown>)
+                : null;
+            if (
+              aiRec?.end_reason === "timeout" ||
+              aiRec?.detail === "timeout"
+            ) {
+              setEndedByTimeout(true);
+              setEndedByResign(false);
+            }
             const loadAiNorm = normalizeMoveResponse(aiData);
             logMove("AI (server, on load)", {
               currentTurn: aiData.current_turn,
@@ -950,6 +1187,9 @@ export function useGamePlay(gameId: string | undefined) {
               );
               if (loadAiTo) setLastBotMoveTo(loadAiTo);
               applyMovePayload(loadAiNorm, setters);
+              if (loadAiNorm.winner != null) {
+                setEndedByResign(false);
+              }
             }
             await syncBoardAndTurnFromServer();
             const snd = useGameSettingsStore.getState().soundEnabled;
@@ -985,6 +1225,14 @@ export function useGamePlay(gameId: string | undefined) {
     (row: number, col: number) => {
       if (!gameId || busy || winner != null || status !== "active") return;
       setHintDestination(null);
+
+      if (!canInteract) {
+        playWarningSound(soundEnabled);
+        setMoveError("Not your turn.");
+        setSelectedPiece(null);
+        setPossibleMoves([]);
+        return;
+      }
 
       const cell = board[row]?.[col] ?? 0;
       const owner = getPieceOwner(cell);
@@ -1029,6 +1277,7 @@ export function useGamePlay(gameId: string | undefined) {
       possibleMoves,
       attemptMove,
       soundEnabled,
+      canInteract,
     ],
   );
 
@@ -1037,13 +1286,18 @@ export function useGamePlay(gameId: string | undefined) {
     setBusy(true);
     try {
       if (USE_GAME_WS && wsReady) {
+        setEndedByResign(true);
+        setEndedByTimeout(false);
         sendResign();
+        playGameOverSound(soundEnabled);
+        setBusy(false);
         return true;
       }
       await gamesApi.resign(gameId);
-      setStatus("finished");
-      setWinner(null);
+      setEndedByResign(true);
+      setEndedByTimeout(false);
       playGameOverSound(soundEnabled);
+      await syncBoardAndTurnFromServer();
       setBusy(false);
       return true;
     } catch {
@@ -1051,7 +1305,7 @@ export function useGamePlay(gameId: string | undefined) {
       setBusy(false);
       return false;
     }
-  }, [gameId, soundEnabled, wsReady, sendResign]);
+  }, [gameId, soundEnabled, wsReady, sendResign, syncBoardAndTurnFromServer]);
 
   const sendChatMessage = useCallback(
     (text: string) => {
@@ -1095,6 +1349,7 @@ export function useGamePlay(gameId: string | undefined) {
 
   useEffect(() => {
     if (!gameId || loading) return;
+    if (!isAuthenticated) return;
     if (
       winner != null ||
       status !== "active"
@@ -1125,6 +1380,7 @@ export function useGamePlay(gameId: string | undefined) {
   }, [
     gameId,
     loading,
+    isAuthenticated,
     board,
     status,
     winner,
@@ -1135,6 +1391,7 @@ export function useGamePlay(gameId: string | undefined) {
 
   const requestHint = useCallback(() => {
     if (busy || winner != null || status !== "active") return;
+    if (!canInteract) return;
     const turn = currentTurn as 1 | 2;
 
     const pickRandom = (moves: LegalDestination[]) => {
@@ -1196,6 +1453,7 @@ export function useGamePlay(gameId: string | undefined) {
     currentTurn,
     selectedPiece,
     possibleMoves,
+    canInteract,
   ]);
 
   const undoLastMove = useCallback(async () => {
@@ -1225,6 +1483,8 @@ export function useGamePlay(gameId: string | undefined) {
       setSelectedPiece(null);
       setPossibleMoves([]);
       playMoveSound(soundEnabled);
+      const clkUndo = parseClockSnapshot(u);
+      if (clkUndo) setServerClock(clkUndo);
     } catch (e: unknown) {
       const err = e as { response?: { data?: { detail?: string } } };
       setMoveError(
@@ -1262,12 +1522,6 @@ export function useGamePlay(gameId: string | undefined) {
     URL.revokeObjectURL(a.href);
   }, [gameId, moveHistory, winner, status]);
 
-  const flipBoard = useMemo(() => {
-    if (isAiGame) return false;
-    if (!rotateBoardForTurn) return false;
-    return confirmedTurnForFlip === 2;
-  }, [isAiGame, rotateBoardForTurn, confirmedTurnForFlip]);
-
   return {
     loading,
     loadError,
@@ -1276,6 +1530,17 @@ export function useGamePlay(gameId: string | undefined) {
     winner,
     status,
     isAiGame,
+    isRanked,
+    isLocal2p,
+    isOnlinePvp,
+    mySeat,
+    playerOneProfile,
+    playerTwoProfile,
+    serverClock,
+    endedByResign,
+    endedByTimeout,
+    useClock,
+    canInteract,
     selectedPiece,
     possibleMoves,
     busy,
@@ -1305,5 +1570,11 @@ export function useGamePlay(gameId: string | undefined) {
     chatMessages,
     sendChatMessage,
     wsConnected: wsReady,
+    /**
+     * Turn last confirmed by server (hydrate / move response / WS). Lags optimistic
+     * `currentTurn` while a move is in flight — use for clocks so the active timer
+     * switches only after the API/WebSocket resolves.
+     */
+    confirmedTurnForFlip,
   };
 }

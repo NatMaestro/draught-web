@@ -1,10 +1,21 @@
 import { countMaterial, type PlayerId } from "@/lib/boardUtils";
 import { CapturedPiecesRow } from "@/components/game/CapturedPiecesRow";
+import {
+  avatarBackgroundStyle,
+  initialsFromUsername,
+} from "@/lib/playerAvatar";
+import { formatClock } from "@/hooks/useGameClock";
 
 export type PlayerStatsStripProps = {
   board: number[][];
   player: PlayerId;
   label: string;
+  /** Online PvP: show initials + color from username instead of "1" / "2". */
+  avatarUsername?: string;
+  /** Countdown (seconds remaining) — active player’s clock runs. */
+  timerSeconds?: number;
+  /** When false, clock is paused / grayed (not their turn). */
+  timerActive?: boolean;
   /** Opponent pieces captured (cell values 1–4), for trophy row. */
   capturedPieceValues: number[];
   isActiveTurn: boolean;
@@ -17,6 +28,9 @@ export function PlayerStatsStrip({
   board,
   player,
   label,
+  avatarUsername,
+  timerSeconds,
+  timerActive,
   capturedPieceValues,
   isActiveTurn,
   variant,
@@ -36,7 +50,7 @@ export function PlayerStatsStrip({
   return (
     <div
       className={[
-        "w-full max-w-[min(92vw,720px)] border px-2.5 py-2 text-[11px] shadow-sm backdrop-blur-sm sm:text-xs",
+        "w-full max-w-[min(92vw,720px)] border px-1.5 py-1.5 text-[10px] shadow-sm backdrop-blur-sm sm:px-2.5 sm:py-2 sm:text-xs",
         isDock ? "rounded-xl text-slate-200" : "text-text",
         variant === "top"
           ? isDock
@@ -51,14 +65,17 @@ export function PlayerStatsStrip({
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
         <div className="flex min-w-0 items-center gap-2">
           <div
-            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-xs font-bold ${
-              isDock
-                ? "bg-slate-700 text-amber-100"
-                : "bg-sheet text-text ring-1 ring-header/30"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+              avatarUsername
+                ? ""
+                : isDock
+                  ? "bg-slate-700 text-amber-100"
+                  : "rounded-md bg-sheet text-text ring-1 ring-header/30"
             }`}
+            style={avatarUsername ? avatarBackgroundStyle(avatarUsername) : undefined}
             aria-hidden
           >
-            {player}
+            {avatarUsername ? initialsFromUsername(avatarUsername) : player}
           </div>
           <div className="min-w-0">
             <p
@@ -71,14 +88,35 @@ export function PlayerStatsStrip({
                 {m.total}
               </span>{" "}
               pieces
-              <span className="opacity-80">
+              <span className="hidden opacity-80 sm:inline">
                 {" "}
                 ({m.men} men · {m.kings} kings)
               </span>
             </p>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex min-w-0 flex-col items-end gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+          {timerSeconds != null ? (
+            <div
+              className={`flex flex-col items-end tabular-nums ${
+                timerActive
+                  ? isDock
+                    ? "text-amber-200"
+                    : "font-semibold text-text"
+                  : isDock
+                    ? "text-slate-600"
+                    : "text-muted opacity-70"
+              }`}
+              title={timerActive ? "Clock running (on move)" : "Clock paused"}
+            >
+              <span className="text-[9px] uppercase tracking-wide opacity-80">
+                Time
+              </span>
+              <span className="text-sm font-bold sm:text-base">
+                {formatClock(timerSeconds)}
+              </span>
+            </div>
+          ) : null}
           <span
             className={`text-[10px] uppercase tracking-wide ${isDock ? "text-slate-500" : "text-muted"}`}
           >
@@ -91,7 +129,9 @@ export function PlayerStatsStrip({
               </span>
             ) : null}
           </span>
-          <CapturedPiecesRow pieces={capturedPieceValues} />
+          <div className="max-w-full shrink-0">
+            <CapturedPiecesRow pieces={capturedPieceValues} />
+          </div>
         </div>
       </div>
     </div>

@@ -12,11 +12,11 @@ export function GetStartedPage() {
   };
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col justify-center bg-cream px-6">
+    <div className="relative flex min-h-[100dvh] flex-col justify-center bg-cream safe-x pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Link
         to="/"
         replace
-        className="absolute left-6 top-12 text-text hover:underline"
+        className="absolute left-[max(1.5rem,env(safe-area-inset-left))] top-[max(3rem,env(safe-area-inset-top))] text-text hover:underline"
       >
         ← Back
       </Link>

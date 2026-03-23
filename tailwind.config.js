@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  // Layout: treat `md` (768px+) as tablet + desktop — sidebar, game side panels, no mobile HUD.
+  // Optional ad column on game routes uses `lg` (1024px+) to avoid crowding mid-size tablets.
   theme: {
     extend: {
       colors: {
