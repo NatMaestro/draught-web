@@ -189,7 +189,7 @@ export function HomePage() {
             <HomeRow
               title="Play with Bots"
               subtitle={<span className="text-muted">Jones — Friendly</span>}
-              onPress={() => navigate("/play")}
+              onPress={() => navigate("/play/ai")}
               preview={<MiniBoardPreview variant="bots" />}
             />
             <HomeRow
