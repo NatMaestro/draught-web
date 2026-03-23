@@ -192,10 +192,10 @@ export function PlayMatchmakingPage() {
           Play online
         </motion.h1>
         <p className="mt-2 text-sm text-muted">
-          You&apos;ll be paired with another signed-in player. Ranked games
-          update your ELO when the game finishes. We match you with opponents
-          close to your rating first; if nobody is available, the allowed
-          rating gap widens the longer you wait (similar to Chess.com).
+          You&apos;ll be paired with another signed-in player. Choose{" "}
+          <strong className="font-semibold text-text">Casual</strong> or{" "}
+          <strong className="font-semibold text-text">Ranked</strong> below —
+          the difference is explained under the buttons.
         </p>
         <p className="mt-3 rounded-xl border border-header/15 bg-cream/70 px-3 py-2 text-xs text-muted">
           Move clock from play menu:{" "}
@@ -241,6 +241,33 @@ export function PlayMatchmakingPage() {
           >
             Ranked
           </button>
+        </div>
+
+        <div
+          className="mt-3 rounded-xl border border-header/20 bg-sheet/70 px-4 py-3 text-sm leading-relaxed"
+          role="region"
+          aria-live="polite"
+          aria-label={ranked ? "Ranked mode" : "Casual mode"}
+        >
+          {ranked ? (
+            <>
+              <p className="font-semibold text-text">Ranked</p>
+              <p className="mt-1.5 text-muted">
+                Your rating (ELO) changes when the game ends — wins, losses, and
+                draws all count. We look for opponents near your rating first;
+                if nobody is available, the allowed rating gap widens the longer
+                you wait (similar to Chess.com).
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold text-text">Casual</p>
+              <p className="mt-1.5 text-muted">
+                Your rating does not change. Use this for relaxed games,
+                practice, or trying ideas without affecting your ranked standing.
+              </p>
+            </>
+          )}
         </div>
 
         <div className="mt-8">
