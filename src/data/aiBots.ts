@@ -104,3 +104,29 @@ export const ALL_BOT_TIERS: TierDef[] = [
     ],
   },
 ];
+
+/** Resolve a bot from the roster by stable `id` (e.g. from URL / sessionStorage). */
+export function findBotById(id: string): BotDef | undefined {
+  const needle = id.trim();
+  if (!needle) return undefined;
+  for (const tier of ALL_BOT_TIERS) {
+    const b = tier.bots.find((x) => x.id === needle);
+    if (b) return b;
+  }
+  return undefined;
+}
+
+/**
+ * Human-readable opponent label when only `engineKey` / API `ai_difficulty` is known
+ * (e.g. resume game — no bot id).
+ */
+export function labelForAiDifficulty(engineKey: string | undefined): string {
+  if (!engineKey?.trim()) return "AI";
+  const key = engineKey.trim().toLowerCase();
+  for (const tier of ALL_BOT_TIERS) {
+    if (tier.bots.some((b) => b.engineKey === key)) {
+      return tier.label;
+    }
+  }
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}

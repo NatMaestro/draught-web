@@ -34,6 +34,7 @@ import {
   BOARD_SIZE,
   DEFAULT_BOARD_ROTATION_MS,
   MULTI_CAPTURE_STEP_MS,
+  AI_MULTI_CAPTURE_STEP_MS,
   emptyBoard,
   normalizeBoardState,
 } from "@/lib/boardUtils";
@@ -275,6 +276,8 @@ export function useGamePlay(gameId: string | undefined) {
   const [winner, setWinner] = useState<number | null>(null);
   const [status, setStatus] = useState<string>("active");
   const [isAiGame, setIsAiGame] = useState(false);
+  /** Server `ai_difficulty` (engine key) — for UI labels when bot roster id is unknown. */
+  const [aiDifficulty, setAiDifficulty] = useState<string | undefined>(undefined);
   const [isRanked, setIsRanked] = useState(false);
   const [isLocal2p, setIsLocal2p] = useState(false);
   /** Online PvP seat labels / board orientation (from GET /games/:id/). */
@@ -442,6 +445,11 @@ export function useGamePlay(gameId: string | undefined) {
     const st = data.status ?? "active";
     setStatus(st);
     setIsAiGame(Boolean(data.is_ai_game));
+    setAiDifficulty(
+      typeof data.ai_difficulty === "string" && data.ai_difficulty.trim() !== ""
+        ? data.ai_difficulty.trim()
+        : undefined,
+    );
     setIsRanked(Boolean(data.is_ranked));
     setIsLocal2p(Boolean(data.is_local_2p));
     setUseClock(data.use_clock !== false);
@@ -497,6 +505,12 @@ export function useGamePlay(gameId: string | undefined) {
       setIsRanked(Boolean(data.is_ranked));
       setIsLocal2p(Boolean(data.is_local_2p));
       setUseClock(data.use_clock !== false);
+      setIsAiGame(Boolean(data.is_ai_game));
+      setAiDifficulty(
+        typeof data.ai_difficulty === "string" && data.ai_difficulty.trim() !== ""
+          ? data.ai_difficulty.trim()
+          : undefined,
+      );
       setPlayerOneProfile(parsePlayerRef(data.player_one));
       setPlayerTwoProfile(parsePlayerRef(data.player_two));
       if (typeof data.can_undo === "boolean") {
@@ -672,6 +686,16 @@ export function useGamePlay(gameId: string | undefined) {
         if (typeof p.winner === "number") setWinner(p.winner);
         else setWinner(null);
       }
+      const rawAi = p as { ai_difficulty?: string; is_ai_game?: boolean };
+      if (typeof rawAi.is_ai_game === "boolean") {
+        setIsAiGame(rawAi.is_ai_game);
+      }
+      if (
+        typeof rawAi.ai_difficulty === "string" &&
+        rawAi.ai_difficulty.trim() !== ""
+      ) {
+        setAiDifficulty(rawAi.ai_difficulty.trim());
+      }
       if (typeof mc === "number" && Number.isFinite(mc) && mc >= 0) {
         lastAppliedMoveCountRef.current = Math.floor(mc);
       }
@@ -786,7 +810,7 @@ export function useGamePlay(gameId: string | undefined) {
                 playMoveSound(soundEnabled);
                 if (i < aiNorm.captured.length - 1) {
                   await new Promise((r) =>
-                    setTimeout(r, MULTI_CAPTURE_STEP_MS),
+                    setTimeout(r, AI_MULTI_CAPTURE_STEP_MS),
                   );
                 }
               }
@@ -1627,6 +1651,7 @@ export function useGamePlay(gameId: string | undefined) {
     winner,
     status,
     isAiGame,
+    aiDifficulty,
     isRanked,
     isLocal2p,
     isOnlinePvp,

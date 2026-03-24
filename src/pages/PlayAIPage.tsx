@@ -59,7 +59,15 @@ export function PlayAIPage() {
             timeControlSec: minutesFromHub * 60,
           }),
       });
-      navigate(`/play/game/${data.id}`, { replace: true });
+      try {
+        sessionStorage.setItem(`aiBot:${data.id}`, selected.id);
+      } catch {
+        /* private mode */
+      }
+      navigate(
+        `/play/game/${data.id}?bot=${encodeURIComponent(selected.id)}`,
+        { replace: true },
+      );
     } catch {
       setError("Could not start game. Check the API and try again.");
       setLoading(false);

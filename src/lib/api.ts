@@ -117,17 +117,36 @@ const api: AxiosInstance = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (accessToken) {
+  // Never send a stale/expired Bearer on login/register/refresh — JWTAuthentication
+  // validates the header first and returns 401 before credentials in the body are used.
+  // Axios `url` varies by version (e.g. `auth/login`, `/auth/login/`, or absolute); resolve fully.
+  if (accessToken && !isAuthEndpointRequest(config)) {
     config.headers.Authorization = `Bearer ${accessToken}`;
+  } else {
+    delete config.headers.Authorization;
   }
   return config;
 });
 
-function isAuthPath(url: string): boolean {
+/** Full path for this request (baseURL + url), stable across Axios URL shapes. */
+function resolvedRequestPath(config: InternalAxiosRequestConfig): string {
+  const base = String(config.baseURL ?? "");
+  const rel = String(config.url ?? "");
+  if (/^https?:\/\//i.test(rel)) {
+    return rel;
+  }
+  const b = base.replace(/\/$/, "");
+  const r = rel.replace(/^\//, "");
+  const joined = r ? `${b}/${r}` : b;
+  return joined.replace(/([^:])\/{2,}/g, "$1/");
+}
+
+function isAuthEndpointRequest(config: InternalAxiosRequestConfig): boolean {
+  const path = resolvedRequestPath(config).split("?")[0].toLowerCase();
   return (
-    url.includes("/auth/login/") ||
-    url.includes("/auth/register/") ||
-    url.includes("/auth/token/refresh/")
+    path.includes("/auth/login") ||
+    path.includes("/auth/register") ||
+    path.includes("/auth/token/refresh")
   );
 }
 
@@ -140,13 +159,11 @@ api.interceptors.response.use(
     };
     const original = err.config;
     const status = err.response?.status;
-    const url = String(original?.url ?? "");
-
     if (
       status !== 401 ||
       !original ||
       original.__retry ||
-      isAuthPath(url)
+      isAuthEndpointRequest(original)
     ) {
       return Promise.reject(error);
     }

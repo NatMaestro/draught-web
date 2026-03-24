@@ -25,6 +25,10 @@ import { useAuthStore } from "@/store/authStore";
 import { absoluteGameUrl } from "@/lib/deepLink";
 import { getGameOutcomeCopy } from "@/lib/gameOutcome";
 import { GameOverOverlay } from "@/components/game/GameOverOverlay";
+import {
+  findBotById,
+  labelForAiDifficulty,
+} from "@/data/aiBots";
 
 const SHOW_GAME_CHAT = import.meta.env.VITE_USE_GAME_WS !== "false";
 
@@ -64,6 +68,7 @@ export function GamePlayPage() {
     winner,
     status,
     isAiGame,
+    aiDifficulty,
     isLocal2p,
     isOnlinePvp,
     mySeat,
@@ -101,6 +106,36 @@ export function GamePlayPage() {
 
   const gameOver =
     winner != null || status === "finished" || status === "abandoned";
+
+  /** Stable bot roster id from Play vs AI URL or sessionStorage (survives refresh without query). */
+  const aiBotId = useMemo(() => {
+    if (!gameId) return undefined;
+    const fromUrl = searchParams.get("bot");
+    if (fromUrl) return fromUrl;
+    try {
+      return sessionStorage.getItem(`aiBot:${gameId}`) ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }, [gameId, searchParams]);
+
+  useEffect(() => {
+    if (!gameId) return;
+    const fromUrl = searchParams.get("bot");
+    if (fromUrl) {
+      try {
+        sessionStorage.setItem(`aiBot:${gameId}`, fromUrl);
+      } catch {
+        /* private mode / quota */
+      }
+    }
+  }, [gameId, searchParams]);
+
+  const aiOpponentDisplayName = useMemo(() => {
+    if (!isAiGame) return null;
+    const n = aiBotId ? findBotById(aiBotId)?.name : undefined;
+    return n ?? labelForAiDifficulty(aiDifficulty);
+  }, [isAiGame, aiBotId, aiDifficulty]);
 
   const opponentUsername = useMemo(() => {
     if (!isOnlinePvp || mySeat == null) return null;
@@ -246,13 +281,21 @@ export function GamePlayPage() {
 
   const turnLabel = useMemo(() => {
     if (isAiGame) {
-      return confirmedTurnForFlip === 1 ? "Your turn" : "AI thinking…";
+      const opp = aiOpponentDisplayName ?? "AI";
+      return confirmedTurnForFlip === 1 ? "Your turn" : `${opp} thinking…`;
     }
     if (isOnlinePvp && mySeat != null) {
       return confirmedTurnForFlip === mySeat ? "Your turn" : "Opponent's turn";
     }
     return currentTurn === 1 ? "Player 1 to move" : "Player 2 to move";
-  }, [isAiGame, isOnlinePvp, mySeat, currentTurn, confirmedTurnForFlip]);
+  }, [
+    isAiGame,
+    isOnlinePvp,
+    mySeat,
+    currentTurn,
+    confirmedTurnForFlip,
+    aiOpponentDisplayName,
+  ]);
 
   /** Top / bottom strips: online PvP = opponent above, you below + avatars; else legacy P2 top / P1 bottom. */
   const { stripTop, stripBottom } = useMemo(() => {
@@ -301,12 +344,18 @@ export function GamePlayPage() {
         : isAiGame
           ? "You"
           : "Player 1";
-    const labelP2 = isAiGame ? "AI" : "Player 2";
+    const labelP2 = isAiGame
+      ? (aiOpponentDisplayName ?? "AI")
+      : "Player 2";
+    const p2Avatar =
+      isAiGame && aiOpponentDisplayName
+        ? aiOpponentDisplayName
+        : undefined;
     return {
       stripTop: {
         player: 2 as const,
         label: labelP2,
-        avatarUsername: undefined as string | undefined,
+        avatarUsername: p2Avatar,
         caps: p2CapturedPieces,
         isActiveTurn: confirmedTurnForFlip === 2,
         timerSeconds: useClock ? p2Seconds : undefined,
@@ -329,6 +378,7 @@ export function GamePlayPage() {
     playerOneProfile,
     playerTwoProfile,
     isAiGame,
+    aiOpponentDisplayName,
     isAuthenticated,
     username,
     p1CapturedPieces,

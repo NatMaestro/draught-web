@@ -81,6 +81,49 @@ function applyCapture(
   return b;
 }
 
+/**
+ * Replay a full capture chain hop-by-hop (matches Django `apply_move` for multi-jumps).
+ * A man may crown mid-sequence and continue as a flying king — a single teleport would
+ * leave the wrong piece type on the final square.
+ */
+export function applyCaptureSequence(
+  board: number[][],
+  from: [number, number],
+  to: [number, number],
+  captured: Array<{ row: number; col: number }>,
+): number[][] {
+  const rest = captured.map((c) => ({ row: c.row, col: c.col }));
+
+  function recurse(
+    b: number[][],
+    pos: [number, number],
+    caps: Array<{ row: number; col: number }>,
+  ): number[][] {
+    if (caps.length === 0) {
+      if (pos[0] !== to[0] || pos[1] !== to[1]) {
+        throw new Error("capture chain does not end at declared destination");
+      }
+      return b;
+    }
+    const want = caps[0];
+    const hops = getNextCaptureHops(b, pos);
+    for (const h of hops) {
+      if (h.captured.length !== 1) continue;
+      const [cr, cc] = h.captured[0];
+      if (cr !== want.row || cc !== want.col) continue;
+      const b2 = applyCapture(b, pos, h.dest, h.captured);
+      try {
+        return recurse(b2, h.dest, caps.slice(1));
+      } catch {
+        continue;
+      }
+    }
+    throw new Error("illegal capture chain");
+  }
+
+  return recurse(deepCloneBoard(board), from, rest);
+}
+
 type MoveEntry = { dest: [number, number]; captured: Array<[number, number]> };
 
 function enumerateKingFlyingHops(board: number[][], fr: [number, number]): MoveEntry[] {

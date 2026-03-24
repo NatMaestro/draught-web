@@ -3,6 +3,8 @@
  * apply immediately after legal-moves validation, reconcile with server response.
  */
 
+import { applyCaptureSequence } from "@/lib/clientLegalMoves";
+
 /** Matches `GET .../legal-moves/` entries (destination + captured squares). */
 export type LegalDestination = {
   toRow: number;
@@ -30,7 +32,6 @@ export function applyOptimisticMove(
   to: [number, number],
   captured: Array<{ row: number; col: number }>,
 ): number[][] {
-  const b = cloneBoard(board);
   const [fr, fc] = from;
   const [tr, tc] = to;
   if (
@@ -43,16 +44,19 @@ export function applyOptimisticMove(
     tc < 0 ||
     tc >= BOARD_SIZE
   ) {
-    return b;
+    return cloneBoard(board);
   }
+  if (captured.length > 0) {
+    try {
+      return applyCaptureSequence(board, from, to, captured);
+    } catch {
+      return cloneBoard(board);
+    }
+  }
+  const b = cloneBoard(board);
   const cell = b[fr][fc];
   b[tr][tc] = cell;
   b[fr][fc] = EMPTY;
-  for (const { row, col } of captured) {
-    if (row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE) {
-      b[row][col] = EMPTY;
-    }
-  }
   if (cell === P1_PIECE && tr === 0) {
     b[tr][tc] = P1_KING;
   } else if (cell === P2_PIECE && tr === BOARD_SIZE - 1) {

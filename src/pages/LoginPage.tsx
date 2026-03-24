@@ -6,6 +6,7 @@ import { safeReturnTo } from "@/lib/deepLink";
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
   const [searchParams] = useSearchParams();
   const afterLogin = useMemo(
     () => safeReturnTo(searchParams.get("returnTo")),
@@ -18,12 +19,14 @@ export function LoginPage() {
 
   const handleLogin = async () => {
     setError("");
+    setIsLoading(true);
     const result = await login(username, password);
     if (result.ok) {
       navigate(afterLogin, { replace: true });
     } else {
       setError(result.error ?? "Login failed");
-    }
+    } 
+    setIsLoading(false);
   };
 
   const inputWrap =
@@ -91,7 +94,7 @@ export function LoginPage() {
           className="w-full rounded-xl py-4 text-base font-bold text-text shadow-md"
           style={{ backgroundColor: "#EFCA83" }}
         >
-          Continue
+          {isLoading ? "Logging in..." : "Login"}
         </motion.button>
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}
