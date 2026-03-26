@@ -8,6 +8,12 @@ export type WsChatMessage = {
   created_at: string;
 };
 
+export type WsChatTypingPayload = {
+  type: "chat_typing";
+  sender: string;
+  active: boolean;
+};
+
 export type WsMovePayload = {
   type: "move_update";
   board: number[][];
@@ -52,6 +58,7 @@ type UseGameWebSocketOptions = {
   onGameState?: (payload: WsGameStatePayload) => void;
   onGameOver?: (payload: WsGameOverPayload) => void;
   onChatMessage?: (msg: WsChatMessage & { type?: string }) => void;
+  onChatTyping?: (payload: WsChatTypingPayload) => void;
   onError?: (detail: string) => void;
 };
 
@@ -66,6 +73,7 @@ export function useGameWebSocket({
   onGameState,
   onGameOver,
   onChatMessage,
+  onChatTyping,
   onError,
 }: UseGameWebSocketOptions) {
   const [ready, setReady] = useState(false);
@@ -77,6 +85,7 @@ export function useGameWebSocket({
     onGameState,
     onGameOver,
     onChatMessage,
+    onChatTyping,
     onError,
   });
   handlersRef.current = {
@@ -84,6 +93,7 @@ export function useGameWebSocket({
     onGameState,
     onGameOver,
     onChatMessage,
+    onChatTyping,
     onError,
   };
 
@@ -97,6 +107,13 @@ export function useGameWebSocket({
   const sendChat = useCallback(
     (text: string, sender: string) => {
       sendJson({ type: "chat", text, sender });
+    },
+    [sendJson],
+  );
+
+  const sendChatTyping = useCallback(
+    (active: boolean, sender: string) => {
+      sendJson({ type: "chat_typing", active, sender });
     },
     [sendJson],
   );
@@ -171,6 +188,10 @@ export function useGameWebSocket({
             h.onChatMessage?.(msg as WsChatMessage & { type?: string });
             return;
           }
+          if (t === "chat_typing") {
+            h.onChatTyping?.(msg as unknown as WsChatTypingPayload);
+            return;
+          }
         } catch {
           handlersRef.current.onError?.("Invalid server message");
         }
@@ -216,6 +237,7 @@ export function useGameWebSocket({
     wsReady: ready,
     sendMove,
     sendChat,
+    sendChatTyping,
     sendResign,
   };
 }

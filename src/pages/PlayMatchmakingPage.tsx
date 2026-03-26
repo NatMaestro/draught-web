@@ -5,10 +5,14 @@ import { matchmakingApi, usersApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
 import { DraughtLoader } from "@/components/ui/DraughtLoader";
 import { gamePlayPath } from "@/lib/deepLink";
+import { MatchmakingSearchExperience } from "@/components/matchmaking/MatchmakingSearchExperience";
+import { MatchmakingNoMatchCallout } from "@/components/matchmaking/MatchmakingNoMatchCallout";
 
-type Phase = "idle" | "searching";
+type Phase = "idle" | "searching" | "no_match";
 
 const POLL_MS = 1500;
+/** Client-side: stop searching and show “no match” if nothing found in this window. */
+const SEARCH_TIMEOUT_MS = 60_000;
 
 /**
  * Online PvP: matchmaking queue (casual or ranked). Requires auth + Redis on the API.
@@ -43,6 +47,7 @@ export function PlayMatchmakingPage() {
   const rankedRef = useRef(false);
   /** Browser `setInterval` id (number); avoid Node `Timeout` typing clash. */
   const pollRef = useRef<number | null>(null);
+  const searchTimeoutRef = useRef<number | null>(null);
 
   const stopPolling = useCallback(() => {
     if (pollRef.current != null) {
@@ -51,17 +56,37 @@ export function PlayMatchmakingPage() {
     }
   }, []);
 
+  const clearSearchTimeout = useCallback(() => {
+    if (searchTimeoutRef.current != null) {
+      window.clearTimeout(searchTimeoutRef.current);
+      searchTimeoutRef.current = null;
+    }
+  }, []);
+
   const goToGame = useCallback(
     (gameId: string) => {
       stopPolling();
+      clearSearchTimeout();
       setPhase("idle");
       setError(null);
       navigate(`${gamePlayPath(gameId)}?minutes=${minutesFromHub}`, {
         replace: true,
       });
     },
-    [navigate, stopPolling, minutesFromHub],
+    [navigate, stopPolling, clearSearchTimeout, minutesFromHub],
   );
+
+  const handleSearchTimeout = useCallback(async () => {
+    stopPolling();
+    clearSearchTimeout();
+    try {
+      await matchmakingApi.cancel(rankedRef.current);
+    } catch {
+      /* */
+    }
+    setPhase("no_match");
+    setError(null);
+  }, [stopPolling, clearSearchTimeout]);
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
@@ -92,13 +117,15 @@ export function PlayMatchmakingPage() {
   useEffect(() => {
     return () => {
       stopPolling();
+      clearSearchTimeout();
       const r = rankedRef.current;
       void matchmakingApi.cancel(r).catch(() => {});
     };
-  }, [stopPolling]);
+  }, [stopPolling, clearSearchTimeout]);
 
   const startSearch = useCallback(async () => {
     setError(null);
+    clearSearchTimeout();
     rankedRef.current = ranked;
     setPhase("searching");
     try {
@@ -128,6 +155,9 @@ export function PlayMatchmakingPage() {
       };
       void pollOnce();
       pollRef.current = window.setInterval(() => void pollOnce(), POLL_MS);
+      searchTimeoutRef.current = window.setTimeout(() => {
+        void handleSearchTimeout();
+      }, SEARCH_TIMEOUT_MS);
     } catch (e: unknown) {
       const err = e as {
         response?: {
@@ -154,10 +184,19 @@ export function PlayMatchmakingPage() {
       }
       setPhase("idle");
     }
-  }, [goToGame, ranked, stopPolling, minutesFromHub, useClockFromHub]);
+  }, [
+    goToGame,
+    ranked,
+    stopPolling,
+    clearSearchTimeout,
+    minutesFromHub,
+    useClockFromHub,
+    handleSearchTimeout,
+  ]);
 
   const cancelSearch = useCallback(async () => {
     stopPolling();
+    clearSearchTimeout();
     try {
       await matchmakingApi.cancel(rankedRef.current);
     } catch {
@@ -165,7 +204,7 @@ export function PlayMatchmakingPage() {
     }
     setPhase("idle");
     setError(null);
-  }, [stopPolling]);
+  }, [stopPolling, clearSearchTimeout]);
 
   if (authLoading || !isAuthenticated) {
     return <DraughtLoader variant="fullscreen" ariaLabel="Loading" />;
@@ -196,8 +235,8 @@ export function PlayMatchmakingPage() {
         </p>
         <p className="mt-3 rounded-xl border border-header/15 bg-cream/70 px-3 py-2 text-xs text-muted">
           Move clock from play menu:{" "}
-          <strong className="text-text">{minutesFromHub} min</strong> per move
-          (for when server-side clocks are connected).
+          <strong className="text-text">{minutesFromHub} min</strong> per turn
+          (server-side clocks).
         </p>
 
         {rating != null ? (
@@ -269,25 +308,18 @@ export function PlayMatchmakingPage() {
 
         <div className="mt-8">
           {phase === "searching" ? (
-            <div className="flex flex-col items-center gap-4 rounded-2xl border border-header/20 bg-white/40 px-6 py-10 text-center">
-              <div
-                className="h-12 w-12 animate-spin rounded-full border-2 border-header border-t-transparent"
-                aria-hidden
-              />
-              <p className="font-semibold text-text">Looking for an opponent…</p>
-              <p className="text-xs text-muted">
-                {ranked
-                  ? "Ranked — ratings change when the game ends."
-                  : "Casual — no rating change."}
-              </p>
-              <button
-                type="button"
-                onClick={() => void cancelSearch()}
-                className="mt-2 rounded-xl border border-header/30 bg-cream px-6 py-2.5 text-sm font-semibold text-text"
-              >
-                Cancel
-              </button>
-            </div>
+            <MatchmakingSearchExperience
+              ranked={ranked}
+              userRating={rating}
+              onCancel={() => void cancelSearch()}
+            />
+          ) : phase === "no_match" ? (
+            <MatchmakingNoMatchCallout
+              onTryAgain={() => {
+                setPhase("idle");
+                setError(null);
+              }}
+            />
           ) : (
             <motion.button
               type="button"

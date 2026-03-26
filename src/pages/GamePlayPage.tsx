@@ -15,6 +15,7 @@ import { PlayerStatsStrip } from "@/components/game/PlayerStatsStrip";
 import { ResignConfirmModal } from "@/components/game/ResignConfirmModal";
 import { GuestExitConfirmModal } from "@/components/game/GuestExitConfirmModal";
 import { GameChatModal } from "@/components/game/GameChatModal";
+import { GameChatDesktopAside } from "@/components/game/GameChatDesktopAside";
 import {
   RulesHelpModal,
   RulesHeaderIconButton,
@@ -95,6 +96,9 @@ export function GamePlayPage() {
     resign,
     chatMessages,
     sendChatMessage,
+    sendChatTypingActivity,
+    chatPeerTyping,
+    chatPeerTypingName,
     chatUnreadCount,
     wsConnected,
     moveHistory,
@@ -504,6 +508,9 @@ export function GamePlayPage() {
           senderLabel={isAuthenticated && username ? username : "Guest"}
           disabled={busy}
           connected={wsConnected}
+          peerTyping={chatPeerTyping}
+          peerTypingName={chatPeerTypingName}
+          onTypingActivity={sendChatTypingActivity}
         />
       ) : null}
 
@@ -607,6 +614,22 @@ export function GamePlayPage() {
                   </div>
                 </div>
               </div>
+
+              {SHOW_GAME_CHAT && !isAiGame && chatModalOpen ? (
+                <GameChatDesktopAside
+                  onClose={() => setChatModalOpen(false)}
+                  messages={chatMessages}
+                  onSend={sendChatMessage}
+                  senderLabel={
+                    isAuthenticated && username ? username : "Guest"
+                  }
+                  disabled={busy}
+                  connected={wsConnected}
+                  peerTyping={chatPeerTyping}
+                  peerTypingName={chatPeerTypingName}
+                  onTypingActivity={sendChatTypingActivity}
+                />
+              ) : null}
 
               <GamePlayRightPanel
                 turnLabel={turnLabel}

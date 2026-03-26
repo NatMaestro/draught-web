@@ -15,7 +15,11 @@ export class GamePlayErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("[GamePlay]", error.message, info.componentStack);
+    if (import.meta.env.DEV) {
+      console.error("[GamePlay]", error.message, info.componentStack);
+    } else {
+      console.error("[GamePlay]", error.message);
+    }
   }
 
   render(): ReactNode {

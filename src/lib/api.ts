@@ -265,6 +265,8 @@ export type GameChallenge = {
   rematch_game: string | null;
   status: string;
   created_at: string;
+  /** Set when status is `accepted` — the live match to join. */
+  game_id?: string | null;
 };
 
 /** GET /games/:id/ — aligns with GameSerializer. */

@@ -246,12 +246,6 @@ export function Board({
             const { row: toR, col: toC } = logical;
             if (toR !== p.from[0] || toC !== p.from[1]) {
               suppressNextClickRef.current = true;
-              if (import.meta.env.DEV) {
-                console.log("[Board drag] onDragMove", {
-                  from: p.from,
-                  to: [toR, toC],
-                });
-              }
               void onMove(p.from, [toR, toC]);
             }
           }

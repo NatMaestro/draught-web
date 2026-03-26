@@ -716,14 +716,36 @@ export function PlayFriendsPage() {
                     >
                       <span>
                         To <strong>{c.to_user.username}</strong>
+                        {c.status === "accepted" ? (
+                          <span className="ml-2 text-xs font-semibold text-emerald-800">
+                            · Accepted
+                          </span>
+                        ) : null}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => void onCancelChallenge(c.id)}
-                        className="rounded-full border border-header/30 px-3 py-1 text-xs font-semibold"
-                      >
-                        Cancel
-                      </button>
+                      <span className="flex flex-wrap gap-2">
+                        {c.status === "accepted" &&
+                        typeof c.game_id === "string" &&
+                        c.game_id.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              navigate(`/play/game/${encodeURIComponent(c.game_id!)}`)
+                            }
+                            className="rounded-full px-3 py-1 text-xs font-semibold text-text"
+                            style={{ backgroundColor: "#A8C97A" }}
+                          >
+                            Join game
+                          </button>
+                        ) : c.status === "pending" ? (
+                          <button
+                            type="button"
+                            onClick={() => void onCancelChallenge(c.id)}
+                            className="rounded-full border border-header/30 px-3 py-1 text-xs font-semibold"
+                          >
+                            Cancel
+                          </button>
+                        ) : null}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -829,20 +851,41 @@ export function PlayFriendsPage() {
               <p className="text-sm text-muted">No notifications yet.</p>
             ) : (
               <ul className="space-y-2">
-                {notifications.map((n) => (
-                  <li
-                    key={n.id}
-                    className={`rounded-xl border px-3 py-2 text-sm ${
-                      n.read_at ? "border-header/10 bg-white/40" : "border-header/25 bg-sheet/90"
-                    }`}
-                  >
-                    <p className="font-semibold text-text">{n.title}</p>
-                    {n.body ? <p className="text-muted">{n.body}</p> : null}
-                    <p className="mt-1 text-[10px] uppercase text-muted">
-                      {n.kind.replace(/_/g, " ")}
-                    </p>
-                  </li>
-                ))}
+                {notifications.map((n) => {
+                  const notifGameId =
+                    typeof n.payload?.game_id === "string"
+                      ? n.payload.game_id
+                      : null;
+                  const showJoinGame =
+                    n.kind === "challenge_accepted" &&
+                    notifGameId != null &&
+                    notifGameId.length > 0;
+                  return (
+                    <li
+                      key={n.id}
+                      className={`rounded-xl border px-3 py-2 text-sm ${
+                        n.read_at
+                          ? "border-header/10 bg-white/40"
+                          : "border-header/25 bg-sheet/90"
+                      }`}
+                    >
+                      <p className="font-semibold text-text">{n.title}</p>
+                      {n.body ? <p className="text-muted">{n.body}</p> : null}
+                      {showJoinGame ? (
+                        <Link
+                          to={`/play/game/${encodeURIComponent(notifGameId)}`}
+                          className="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold text-text"
+                          style={{ backgroundColor: "#A8C97A" }}
+                        >
+                          Join game
+                        </Link>
+                      ) : null}
+                      <p className="mt-1 text-[10px] uppercase text-muted">
+                        {n.kind.replace(/_/g, " ")}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

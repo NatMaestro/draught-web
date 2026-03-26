@@ -166,8 +166,6 @@ function getPieceOwner(cell: number): 1 | 2 | null {
   return null;
 }
 
-const MOVE_LOG_PREFIX = "[Draught move]";
-
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -250,15 +248,11 @@ function computeOpponentLastMoveHighlight(
   });
 }
 
-function logMove(
-  message: string,
-  payload?: Record<string, unknown>,
-): void {
-  if (payload !== undefined) {
-    console.log(MOVE_LOG_PREFIX, message, payload);
-  } else {
-    console.log(MOVE_LOG_PREFIX, message);
-  }
+/** Dev-only error traces — never log board state, coordinates, or move payloads. */
+function logDevError(context: string, err?: unknown): void {
+  if (!import.meta.env.DEV) return;
+  if (err !== undefined) console.error("[Draught]", context, err);
+  else console.error("[Draught]", context);
 }
 
 export function useGamePlay(
@@ -339,6 +333,11 @@ export function useGamePlay(
   const lastMoveRef = useRef<MoveRecord | null>(null);
   const [chatMessages, setChatMessages] = useState<WsChatMessage[]>([]);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const [chatPeerTyping, setChatPeerTyping] = useState(false);
+  const [chatPeerTypingName, setChatPeerTypingName] = useState<string | null>(
+    null,
+  );
+  const peerTypingTimeoutRef = useRef<number | null>(null);
   const chatPanelOpenRef = useRef(false);
   useEffect(() => {
     chatPanelOpenRef.current = options?.chatPanelOpen ?? false;
@@ -538,7 +537,10 @@ export function useGamePlay(
       lastAppliedMoveCountRef.current = plyCount;
       return data;
     } catch (e: unknown) {
-      logMove("sync GET failed", { detail: String(e) });
+      logDevError(
+        "sync GET failed",
+        e instanceof Error ? e.message : String(e),
+      );
       return null;
     }
   }, [gameId, userId, username]);
@@ -563,16 +565,23 @@ export function useGamePlay(
     return null;
   }, [isOnlinePvp, userId, username, playerOneProfile, playerTwoProfile]);
 
-  const { wsReady, sendMove, sendChat, sendResign } = useGameWebSocket({
+  const myChatLabel = useMemo(
+    () =>
+      isAuthenticated && username && username.trim().length > 0
+        ? username.trim()
+        : "Guest",
+    [isAuthenticated, username],
+  );
+
+  const { wsReady, sendMove, sendChat, sendChatTyping, sendResign } =
+    useGameWebSocket({
     gameId,
     accessToken,
     enabled: USE_GAME_WS && Boolean(gameId),
     onMoveUpdate: (payload) => {
       const normalized = normalizeMoveResponse(payload);
       if (!normalized) {
-        logMove("move_update dropped — could not normalize payload", {
-          payload,
-        });
+        logDevError("move_update: normalize failed");
         rollbackOptimistic();
         pendingWsMoveRef.current = false;
         skipNextMoveSoundRef.current = false;
@@ -687,7 +696,6 @@ export function useGamePlay(
         !undo &&
         mc < last
       ) {
-        logMove("game_state ignored (stale move_count)", { mc, last });
         return;
       }
       if (p.board && Array.isArray(p.board) && p.board.length === BOARD_SIZE) {
@@ -732,6 +740,12 @@ export function useGamePlay(
       void syncBoardAndTurnFromServer();
     },
     onChatMessage: (msg) => {
+      if (peerTypingTimeoutRef.current != null) {
+        window.clearTimeout(peerTypingTimeoutRef.current);
+        peerTypingTimeoutRef.current = null;
+      }
+      setChatPeerTyping(false);
+      setChatPeerTypingName(null);
       setChatMessages((prev) => [
         ...prev,
         {
@@ -747,6 +761,27 @@ export function useGamePlay(
       if (me && sender && sender !== me) {
         setChatUnreadCount((c) => c + 1);
       }
+    },
+    onChatTyping: (payload) => {
+      const peer = (payload.sender ?? "").trim();
+      if (!peer) return;
+      if (peer.toLowerCase() === myChatLabel.toLowerCase()) return;
+      if (peerTypingTimeoutRef.current != null) {
+        window.clearTimeout(peerTypingTimeoutRef.current);
+        peerTypingTimeoutRef.current = null;
+      }
+      if (!payload.active) {
+        setChatPeerTyping(false);
+        setChatPeerTypingName(null);
+        return;
+      }
+      setChatPeerTyping(true);
+      setChatPeerTypingName(peer);
+      peerTypingTimeoutRef.current = window.setTimeout(() => {
+        peerTypingTimeoutRef.current = null;
+        setChatPeerTyping(false);
+        setChatPeerTypingName(null);
+      }, 4500);
     },
     onError: (detail) => {
       rollbackOptimistic();
@@ -793,13 +828,6 @@ export function useGamePlay(
         const clkAi = parseClockSnapshot(data);
         if (clkAi) setServerClock(clkAi);
         const aiNorm = normalizeMoveResponse(data);
-        logMove("AI (server)", {
-          currentTurn: data.current_turn,
-          captures: data.captured?.length ?? 0,
-          capturedSquares: data.captured,
-          winner: data.winner,
-          status: data.status,
-        });
         let aiMultiCaptureAnimated = false;
         if (aiNorm) {
           const bBefore = boardRef.current;
@@ -857,9 +885,10 @@ export function useGamePlay(
         }
       } catch (e: unknown) {
         const err = e as { response?: { data?: { detail?: string } } };
-        logMove("AI move failed", {
-          detail: err.response?.data?.detail ?? String(e),
-        });
+        logDevError(
+          "AI move failed",
+          err.response?.data?.detail ?? (e instanceof Error ? e.message : e),
+        );
         setMoveError(
           err.response?.data?.detail ?? "AI move failed. Try again.",
         );
@@ -905,9 +934,6 @@ export function useGamePlay(
   const attemptMove = useCallback(
     async (from: [number, number], to: [number, number]) => {
       if (!gameId || busy || winner != null || status !== "active") {
-        if (gameId && (busy || winner != null || status !== "active")) {
-          logMove("attempt skipped", { busy, winner, status });
-        }
         return;
       }
 
@@ -920,12 +946,6 @@ export function useGamePlay(
       const [fromRow, fromCol] = from;
       const [toRow, toCol] = to;
       const cell = board[fromRow]?.[fromCol] ?? 0;
-      logMove("attempt", {
-        from: [fromRow, fromCol],
-        to: [toRow, toCol],
-        piece: cell,
-        currentTurn,
-      });
 
       if (!isOwnPiece(cell, currentTurn)) {
         playWarningSound(soundEnabled);
@@ -936,7 +956,6 @@ export function useGamePlay(
             `Player ${currentTurn}'s turn — can't move that piece.`,
           );
         }
-        logMove("rejected — not your piece", { cell, currentTurn });
         return;
       }
 
@@ -947,7 +966,6 @@ export function useGamePlay(
         possibleMoves.length > 0
       ) {
         moveOptions = possibleMoves;
-        logMove("using cached legal moves", { count: moveOptions.length });
       } else {
         moveOptions = computeLegalDestinations(
           board,
@@ -955,7 +973,6 @@ export function useGamePlay(
           fromRow,
           fromCol,
         );
-        logMove("computed legal moves (client)", { count: moveOptions.length });
       }
 
       const chosen = moveOptions.find(
@@ -965,10 +982,6 @@ export function useGamePlay(
         setMoveError("Illegal move");
         setSelectedPiece(null);
         setPossibleMoves([]);
-        logMove("rejected — not in legal moves", {
-          to: [toRow, toCol],
-          legal: moveOptions,
-        });
         return;
       }
 
@@ -1036,10 +1049,6 @@ export function useGamePlay(
               to_row: toRow,
               to_col: toCol,
             });
-            logMove("sent via WebSocket (optimistic)", {
-              from: [fromRow, fromCol],
-              to: [toRow, toCol],
-            });
             return;
           }
 
@@ -1067,17 +1076,6 @@ export function useGamePlay(
             }
             const clkMove = parseClockSnapshot(raw);
             if (clkMove) setServerClock(clkMove);
-            logMove("OK (human)", {
-              player: mover,
-              from: [fromRow, fromCol],
-              to: [toRow, toCol],
-              captures: normalized?.captured?.length ?? 0,
-              capturedSquares: normalized?.captured,
-              nextTurn: normalized?.current_turn,
-              winner: normalized?.winner,
-              status: normalized?.status,
-              hadBoardInPayload: Boolean(normalized),
-            });
             if (normalized) {
               addCapturesForMover(mover, normalized, boardForCaptures);
               recordRotationLatencyFromMoveStart();
@@ -1092,12 +1090,7 @@ export function useGamePlay(
               }
             } else {
               pendingCaptureValuesRef.current = null;
-              logMove("move POST missing board; syncing from GET only", {
-                keys:
-                  raw && typeof raw === "object"
-                    ? Object.keys(raw as object)
-                    : [],
-              });
+              logDevError("move POST: response missing normalized board");
               moveTimingStartRef.current = null;
             }
             const snapshot = await syncBoardAndTurnFromServer();
@@ -1115,11 +1108,7 @@ export function useGamePlay(
               typeof err.response?.data?.detail === "string"
                 ? err.response.data.detail
                 : "Invalid move";
-            logMove("API error", {
-              detail,
-              from: [fromRow, fromCol],
-              to: [toRow, toCol],
-            });
+            logDevError("move API error", detail);
             setMoveError(detail);
             setSelectedPiece(null);
             setPossibleMoves([]);
@@ -1154,10 +1143,6 @@ export function useGamePlay(
           to_row: toRow,
           to_col: toCol,
         });
-        logMove("sent via WebSocket (optimistic)", {
-          from: [fromRow, fromCol],
-          to: [toRow, toCol],
-        });
         return;
       }
 
@@ -1187,17 +1172,6 @@ export function useGamePlay(
         }
         const clkMove2 = parseClockSnapshot(raw);
         if (clkMove2) setServerClock(clkMove2);
-        logMove("OK (human)", {
-          player: mover,
-          from: [fromRow, fromCol],
-          to: [toRow, toCol],
-          captures: normalized?.captured?.length ?? 0,
-          capturedSquares: normalized?.captured,
-          nextTurn: normalized?.current_turn,
-          winner: normalized?.winner,
-          status: normalized?.status,
-          hadBoardInPayload: Boolean(normalized),
-        });
         if (normalized) {
           addCapturesForMover(mover, normalized, boardForCaptures);
           recordRotationLatencyFromMoveStart();
@@ -1212,9 +1186,7 @@ export function useGamePlay(
           }
         } else {
           pendingCaptureValuesRef.current = null;
-          logMove("move POST missing board; syncing from GET only", {
-            keys: raw && typeof raw === "object" ? Object.keys(raw as object) : [],
-          });
+          logDevError("move POST: response missing normalized board");
           moveTimingStartRef.current = null;
         }
         const snapshot = await syncBoardAndTurnFromServer();
@@ -1232,7 +1204,7 @@ export function useGamePlay(
           typeof err.response?.data?.detail === "string"
             ? err.response.data.detail
             : "Invalid move";
-        logMove("API error", { detail, from: [fromRow, fromCol], to: [toRow, toCol] });
+        logDevError("move API error", detail);
         setMoveError(detail);
         setSelectedPiece(null);
         setPossibleMoves([]);
@@ -1297,12 +1269,6 @@ export function useGamePlay(
               setEndedByResign(false);
             }
             const loadAiNorm = normalizeMoveResponse(aiData);
-            logMove("AI (server, on load)", {
-              currentTurn: aiData.current_turn,
-              captures: aiData.captured?.length ?? 0,
-              capturedSquares: aiData.captured,
-              winner: aiData.winner,
-            });
             if (loadAiNorm) {
               const bBeforeAi = boardRef.current;
               addCapturesForMover(2, loadAiNorm, bBeforeAi);
@@ -1327,6 +1293,11 @@ export function useGamePlay(
           } catch (e: unknown) {
             if (!cancelled) {
               const err = e as { response?: { data?: { detail?: string } } };
+              logDevError(
+                "AI move after load failed",
+                err.response?.data?.detail ??
+                  (e instanceof Error ? e.message : e),
+              );
               setMoveError(
                 err.response?.data?.detail ?? "AI move failed after load.",
               );
@@ -1445,8 +1416,22 @@ export function useGamePlay(
     [sendChat, isAuthenticated, username],
   );
 
+  const sendChatTypingActivity = useCallback(
+    (active: boolean) => {
+      if (!USE_GAME_WS || !wsReady) return;
+      sendChatTyping(active, myChatLabel);
+    },
+    [wsReady, sendChatTyping, myChatLabel],
+  );
+
   useEffect(() => {
     setChatMessages([]);
+    setChatPeerTyping(false);
+    setChatPeerTypingName(null);
+    if (peerTypingTimeoutRef.current != null) {
+      window.clearTimeout(peerTypingTimeoutRef.current);
+      peerTypingTimeoutRef.current = null;
+    }
   }, [gameId]);
 
   useEffect(() => {
@@ -1710,6 +1695,9 @@ export function useGamePlay(
     setMoveError,
     chatMessages,
     sendChatMessage,
+    sendChatTypingActivity,
+    chatPeerTyping,
+    chatPeerTypingName,
     chatUnreadCount,
     wsConnected: wsReady,
     /**

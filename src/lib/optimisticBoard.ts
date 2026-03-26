@@ -90,12 +90,7 @@ export function computeCaptureJumpWaypoints(
   }
   const last = waypoints[waypoints.length - 1];
   if (last[0] !== to[0] || last[1] !== to[1]) {
-    if (import.meta.env.DEV) {
-      console.warn("[computeCaptureJumpWaypoints] last landing != to", {
-        waypoints,
-        to,
-      });
-    }
+    /* Mismatch — caller should fall back; do not log geometry (noisy / sensitive in prod). */
   }
   return waypoints;
 }

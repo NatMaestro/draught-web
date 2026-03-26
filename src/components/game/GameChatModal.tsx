@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import type { WsChatMessage } from "@/hooks/useGameWebSocket";
 import { GameChatPanel } from "@/components/game/GameChatPanel";
+import { useVisualViewportHeight } from "@/hooks/useVisualViewportHeight";
 
 type Props = {
   open: boolean;
@@ -10,8 +11,15 @@ type Props = {
   senderLabel: string;
   disabled: boolean;
   connected: boolean;
+  peerTyping?: boolean;
+  peerTypingName?: string | null;
+  onTypingActivity?: (active: boolean) => void;
 };
 
+/**
+ * Mobile / small screens: bottom sheet + backdrop.
+ * Desktop uses `GameChatDesktopAside` — this tree is `md:hidden`.
+ */
 export function GameChatModal({
   open,
   onClose,
@@ -20,15 +28,21 @@ export function GameChatModal({
   senderLabel,
   disabled,
   connected,
+  peerTyping = false,
+  peerTypingName = null,
+  onTypingActivity,
 }: Props) {
+  const vvHeight = useVisualViewportHeight();
+  const sheetMaxPx = Math.max(220, Math.min(560, Math.floor(vvHeight * 0.9)));
+
   return (
     <AnimatePresence>
       {open ? (
-        <>
+        <div className="md:hidden">
           <motion.button
             type="button"
             aria-label="Close chat"
-            className="fixed inset-0 z-[80] bg-black/50"
+            className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[1px]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -41,9 +55,10 @@ export function GameChatModal({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 32, stiffness: 360 }}
-            className="fixed bottom-0 left-0 right-0 z-[81] flex max-h-[min(85dvh,560px)] flex-col rounded-t-[1.25rem] border border-header/20 bg-sheet shadow-2xl md:left-auto md:right-4 md:top-4 md:max-h-[min(100dvh-2rem,520px)] md:w-full md:max-w-md md:rounded-2xl"
+            transition={{ type: "spring", damping: 30, stiffness: 380 }}
+            className="fixed bottom-0 left-0 right-0 z-[81] flex flex-col rounded-t-[1.25rem] border border-header/20 bg-sheet shadow-2xl"
             style={{
+              maxHeight: sheetMaxPx,
               paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
               paddingTop: "max(0.5rem, env(safe-area-inset-top))",
             }}
@@ -68,10 +83,13 @@ export function GameChatModal({
                 disabled={disabled}
                 connected={connected}
                 variant="modal"
+                peerTyping={peerTyping}
+                peerTypingName={peerTypingName}
+                onTypingActivity={onTypingActivity}
               />
             </div>
           </motion.aside>
-        </>
+        </div>
       ) : null}
     </AnimatePresence>
   );
