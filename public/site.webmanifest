@@ -13,6 +13,12 @@
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
+    },
+    {
+      "src": "/Game-Logo.png",
+      "sizes": "135x55",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 import { setGuestPlayAcknowledged } from "@/lib/playSession";
 import { safeReturnTo } from "@/lib/deepLink";
+import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 
 function BoardLogo() {
   const size = 4;
@@ -59,6 +60,7 @@ export function RegisterPage() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const register = useAuthStore((s) => s.register);
 
   const handleRegister = async () => {
@@ -67,21 +69,26 @@ export function RegisterPage() {
       setError("Passwords do not match");
       return;
     }
-    const result = await register({
-      username,
-      email,
-      password,
-      password_confirm: passwordConfirm,
-    });
-    if (result.ok) {
-      navigate(afterRegister, { replace: true });
-    } else {
-      setError(result.error ?? "Registration failed");
+    setIsLoading(true);
+    try {
+      const result = await register({
+        username,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+      });
+      if (result.ok) {
+        navigate(afterRegister, { replace: true });
+      } else {
+        setError(result.error ?? "Registration failed");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const field =
-    "mb-3 w-full rounded-xl border border-header/10 bg-sheet/90 px-4 py-3.5 text-base text-text placeholder:text-muted outline-none focus:ring-2 focus:ring-active/50";
+    "mb-3 w-full rounded-xl border border-header/10 bg-sheet/90 px-4 py-3.5 text-base text-text placeholder:text-muted outline-none focus:ring-2 focus:ring-active/50 disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <div className="min-h-[100dvh] bg-cream safe-x py-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -117,6 +124,7 @@ export function RegisterPage() {
           value={username}
           onChange={(e) => setUsername(e.target.value)}
           autoCapitalize="none"
+          disabled={isLoading}
         />
         <input
           className={field}
@@ -125,6 +133,7 @@ export function RegisterPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoCapitalize="none"
+          disabled={isLoading}
         />
         <input
           className={field}
@@ -132,6 +141,7 @@ export function RegisterPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          disabled={isLoading}
         />
         <input
           className={field}
@@ -139,23 +149,32 @@ export function RegisterPage() {
           type="password"
           value={passwordConfirm}
           onChange={(e) => setPasswordConfirm(e.target.value)}
+          disabled={isLoading}
         />
         <motion.button
           type="button"
-          whileTap={{ scale: 0.98 }}
+          whileTap={{ scale: isLoading ? 1 : 0.98 }}
+          disabled={isLoading}
+          aria-busy={isLoading}
           onClick={() => void handleRegister()}
-          className="mt-2 w-full rounded-xl py-4 text-base font-bold text-text shadow-md"
+          className="mt-2 w-full rounded-xl py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
           style={{ backgroundColor: "#EFCA83" }}
         >
-          Create account
+          <DraughtLoaderButtonContent
+            loading={isLoading}
+            loadingText="Creating account…"
+            idleText="Create account"
+            tone="onLight"
+          />
         </motion.button>
         <button
           type="button"
+          disabled={isLoading}
           onClick={() => {
             setGuestPlayAcknowledged();
             navigate("/play", { replace: true });
           }}
-          className="mt-4 w-full text-center text-sm text-muted underline"
+          className="mt-4 w-full text-center text-sm text-muted underline disabled:cursor-not-allowed disabled:opacity-50"
         >
           Play as guest
         </button>

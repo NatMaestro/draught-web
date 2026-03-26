@@ -137,7 +137,7 @@ export function HomePage() {
         <div className="flex min-w-0 flex-[1.4] items-center justify-center">
           {!logoFailed ? (
             <img
-              src="../../assets/Game-Logo.png"
+              src="/Game-Logo.png"
               alt="Draught"
               className="h-[60px] max-w-[min(100%,200px)] object-cover"
               onError={() => setLogoFailed(true)}
