@@ -6,6 +6,7 @@ import {
   createBrowserRouter,
 } from "react-router-dom";
 import { useSocialWebSocket } from "@/hooks/useSocialWebSocket";
+import { useNavigateWhenChallengeAccepted } from "@/hooks/useNavigateWhenChallengeAccepted";
 import { useAuthStore } from "@/store/authStore";
 import { AppShell } from "@/components/layout/AppShell";
 import { SplashPage } from "@/pages/SplashPage";
@@ -31,6 +32,7 @@ import { TournamentPage } from "@/pages/TournamentPage";
 function RootLayout() {
   const loadStoredToken = useAuthStore((s) => s.loadStoredToken);
   useSocialWebSocket();
+  useNavigateWhenChallengeAccepted();
   useEffect(() => {
     void loadStoredToken();
   }, [loadStoredToken]);
