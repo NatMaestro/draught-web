@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import {
   gamesApi,
   type GameDetail,
@@ -744,17 +745,47 @@ export function useGamePlay(
         window.clearTimeout(peerTypingTimeoutRef.current);
         peerTypingTimeoutRef.current = null;
       }
-      setChatPeerTyping(false);
-      setChatPeerTypingName(null);
-      setChatMessages((prev) => [
-        ...prev,
-        {
-          id: msg.id,
-          sender: msg.sender,
-          text: msg.text,
-          created_at: msg.created_at,
-        },
-      ]);
+
+      const ext = msg as WsChatMessage & {
+        type?: string;
+        client_nonce?: string;
+      };
+      const nonce =
+        typeof ext.client_nonce === "string" && ext.client_nonce.length > 0
+          ? ext.client_nonce
+          : null;
+
+      flushSync(() => {
+        setChatPeerTyping(false);
+        setChatPeerTypingName(null);
+        setChatMessages((prev) => {
+          if (nonce) {
+            const localId = `local-${nonce}`;
+            const without = prev.filter((m) => m.id !== localId);
+            if (without.some((m) => m.id === ext.id)) return without;
+            return [
+              ...without,
+              {
+                id: ext.id,
+                sender: ext.sender,
+                text: ext.text,
+                created_at: ext.created_at,
+              },
+            ];
+          }
+          if (prev.some((m) => m.id === ext.id)) return prev;
+          return [
+            ...prev,
+            {
+              id: ext.id,
+              sender: ext.sender,
+              text: ext.text,
+              created_at: ext.created_at,
+            },
+          ];
+        });
+      });
+
       if (chatPanelOpenRef.current) return;
       const me = username?.trim().toLowerCase();
       const sender = (msg.sender ?? "").trim().toLowerCase();
@@ -781,7 +812,7 @@ export function useGamePlay(
         peerTypingTimeoutRef.current = null;
         setChatPeerTyping(false);
         setChatPeerTypingName(null);
-      }, 4500);
+      }, 3200);
     },
     onError: (detail) => {
       rollbackOptimistic();
@@ -1407,13 +1438,34 @@ export function useGamePlay(
 
   const sendChatMessage = useCallback(
     (text: string) => {
+      const t = text.trim();
+      if (!t) return;
       const sender =
         isAuthenticated && username && username.trim().length > 0
           ? username.trim()
           : "Guest";
-      sendChat(text, sender);
+      const nonce =
+        typeof crypto !== "undefined" &&
+        typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+      const localId = `local-${nonce}`;
+      if (USE_GAME_WS && wsReady) {
+        flushSync(() => {
+          setChatMessages((prev) => [
+            ...prev,
+            {
+              id: localId,
+              sender,
+              text: t,
+              created_at: new Date().toISOString(),
+            },
+          ]);
+        });
+      }
+      sendChat(t, sender, nonce);
     },
-    [sendChat, isAuthenticated, username],
+    [sendChat, isAuthenticated, username, wsReady],
   );
 
   const sendChatTypingActivity = useCallback(

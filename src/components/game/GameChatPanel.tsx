@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { WsChatMessage } from "@/hooks/useGameWebSocket";
 
 type Props = {
@@ -26,7 +33,9 @@ function MessageBubble({
   mine: boolean;
 }) {
   return (
-    <div className={`flex w-full ${mine ? "justify-end" : "justify-start"}`}>
+    <div
+      className={`flex w-full animate-chat-in ${mine ? "justify-end" : "justify-start"}`}
+    >
       <div
         className={`max-w-[min(100%,20rem)] rounded-2xl px-3 py-2 text-sm leading-snug shadow-sm transition-colors ${
           mine
@@ -60,14 +69,23 @@ export function GameChatPanel({
 }: Props) {
   const [open, setOpen] = useState(variant === "embedded" || variant === "modal");
   const [draft, setDraft] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const typingIdleRef = useRef<number | null>(null);
   const onTypingActivityRef = useRef(onTypingActivity);
   onTypingActivityRef.current = onTypingActivity;
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, open, peerTyping]);
+  const scrollKey = useMemo(() => {
+    if (messages.length === 0) return "0";
+    const last = messages[messages.length - 1];
+    return `${messages.length}:${last.id}:${last.text.length}`;
+  }, [messages]);
+
+  useLayoutEffect(() => {
+    if (variant === "default" && !open) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [scrollKey, peerTyping, open, variant]);
 
   const flushTyping = useCallback((active: boolean) => {
     onTypingActivityRef.current?.(active);
@@ -106,7 +124,7 @@ export function GameChatPanel({
     typingIdleRef.current = window.setTimeout(() => {
       typingIdleRef.current = null;
       flushTyping(false);
-    }, 2800);
+    }, 1200);
   };
 
   const onInputBlur = () => {
@@ -130,11 +148,17 @@ export function GameChatPanel({
   const inputClassSmall =
     "min-w-0 flex-1 touch-manipulation rounded-md border border-header/30 bg-cream px-2 py-1.5 text-base leading-normal text-text placeholder:text-muted outline-none";
 
+  const scrollClass =
+    "min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [contain:layout_style]";
+
   if (variant === "modal") {
     return (
       <div className="flex h-full min-h-0 w-full flex-col">
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-header/25 bg-cream/90 shadow-inner">
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-3 py-2 text-sm [scrollbar-gutter:stable]">
+          <div
+            ref={scrollRef}
+            className={`${scrollClass} px-3 py-2 text-sm`}
+          >
             {messages.length === 0 ? (
               <p className="py-8 text-center text-sm text-muted">No messages yet.</p>
             ) : (
@@ -151,7 +175,6 @@ export function GameChatPanel({
                 {typingHint}
               </p>
             ) : null}
-            <div ref={bottomRef} className="h-px shrink-0" aria-hidden />
           </div>
           <div className="flex shrink-0 gap-2 border-t border-header/20 p-3">
             <input
@@ -197,7 +220,7 @@ export function GameChatPanel({
           Chat {connected ? "" : "(offline)"}
         </p>
         <div className="flex max-h-[min(40vh,260px)] flex-col rounded-lg border border-header/25 bg-cream/90 sm:max-h-40">
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 py-2 text-[11px]">
+          <div ref={scrollRef} className={`${scrollClass} px-2 py-2 text-[11px]`}>
             {messages.length === 0 ? (
               <p className="text-center text-muted">No messages yet.</p>
             ) : (
@@ -212,7 +235,6 @@ export function GameChatPanel({
             {typingHint ? (
               <p className="text-[10px] italic text-muted">{typingHint}</p>
             ) : null}
-            <div ref={bottomRef} />
           </div>
           <div className="flex gap-1 border-t border-header/20 p-2">
             <input
@@ -259,7 +281,7 @@ export function GameChatPanel({
       </button>
       {open ? (
         <div className="mt-1 flex max-h-48 flex-col rounded-xl border border-header/20 bg-sheet/60">
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain px-2 py-2 text-xs">
+          <div ref={scrollRef} className={`${scrollClass} px-2 py-2 text-xs`}>
             {messages.length === 0 ? (
               <p className="text-center text-muted">No messages yet.</p>
             ) : (
@@ -274,7 +296,6 @@ export function GameChatPanel({
             {typingHint ? (
               <p className="text-[10px] italic text-muted">{typingHint}</p>
             ) : null}
-            <div ref={bottomRef} />
           </div>
           <div className="flex gap-1 border-t border-header/15 p-2">
             <input

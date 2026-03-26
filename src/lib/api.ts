@@ -483,6 +483,8 @@ export type SocialNotification = {
   body: string;
   read_at: string | null;
   payload: Record<string, unknown>;
+  /** Present for `challenge_accepted` — from live Game row; use to hide Join when finished. */
+  game_status?: string | null;
   created_at: string;
 };
 

@@ -42,8 +42,7 @@ export function GetStartedPage() {
           type="button"
           whileTap={{ scale: 0.98 }}
           onClick={handleGetStarted}
-          className="w-full rounded-xl py-4 text-base font-bold text-text shadow-md"
-          style={{ backgroundColor: "#EFCA83" }}
+          className="w-full rounded-xl bg-active py-4 text-base font-bold text-text shadow-md"
         >
           Get Started
         </motion.button>

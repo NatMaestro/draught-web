@@ -8,6 +8,21 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
     />
     <meta name="theme-color" content="#D8A477" />
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("draught-theme");
+          if (raw) {
+            var j = JSON.parse(raw);
+            if (j.state && j.state.mode === "dark") {
+              document.documentElement.classList.add("dark");
+            } else {
+              document.documentElement.classList.remove("dark");
+            }
+          }
+        } catch (e) {}
+      })();
+    </script>
     <meta
       name="description"
       content="Play Draughts online — puzzles, friends, lessons, and AI."

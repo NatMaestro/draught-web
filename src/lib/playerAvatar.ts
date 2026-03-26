@@ -26,6 +26,6 @@ export function avatarBackgroundStyle(seed: string): CSSProperties {
   const h = hueFromString(seed);
   return {
     backgroundColor: `hsl(${h} 42% 38%)`,
-    color: "#fafafa",
+    color: "#ffffff",
   };
 }

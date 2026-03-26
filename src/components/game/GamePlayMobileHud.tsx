@@ -74,12 +74,12 @@ export function GamePlayMobileHud({
       {/* Bottom dock — fixed above safe area */}
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 pb-safe-dock md:hidden">
         <div className="pointer-events-auto mx-auto max-w-lg px-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))]">
-          <div className="flex touch-manipulation items-stretch gap-2 rounded-2xl border border-white/10 bg-[#0c0f14]/90 px-2 py-2 shadow-[0_-4px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <div className="flex touch-manipulation items-stretch gap-2 rounded-2xl border border-black/10 bg-sheet/95 px-2 py-2 shadow-[0_-4px_24px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-cream/90 dark:shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
             <div className="flex min-w-0 flex-1 flex-col justify-center px-1">
-              <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-cyan-400/80">
+              <p className="truncate text-[10px] font-semibold uppercase tracking-wider text-muted dark:text-cyan-400/80">
                 Status
               </p>
-              <p className="truncate text-[13px] font-bold text-white">
+              <p className="truncate text-[13px] font-bold text-text dark:text-white">
                 {turnLabel}
               </p>
             </div>
@@ -119,7 +119,7 @@ export function GamePlayMobileHud({
               <button
                 type="button"
                 onClick={() => setSheetOpen(true)}
-                className="flex min-h-[48px] min-w-[52px] flex-col items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200/95 active:scale-[0.98]"
+                className="flex min-h-[48px] min-w-[52px] flex-col items-center justify-center rounded-xl border border-header/35 bg-header/15 px-2 py-1.5 text-[10px] font-bold uppercase tracking-wide text-header active:scale-[0.98] dark:border-cyan-500/30 dark:bg-cyan-500/15 dark:text-cyan-200/95"
               >
                 <span className="text-base leading-none" aria-hidden>
                   ≡
@@ -148,21 +148,21 @@ export function GamePlayMobileHud({
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 32, stiffness: 360 }}
-              className="fixed bottom-0 left-0 right-0 z-[70] flex max-h-[min(88dvh,720px)] flex-col rounded-t-[1.25rem] border border-white/10 bg-[#0f1419] text-slate-100 shadow-[0_-12px_48px_rgba(0,0,0,0.5)] md:hidden"
+              className="fixed bottom-0 left-0 right-0 z-[70] flex max-h-[min(88dvh,720px)] flex-col rounded-t-[1.25rem] border border-black/10 bg-sheet text-text shadow-[0_-12px_48px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-cream dark:text-white dark:shadow-[0_-12px_48px_rgba(0,0,0,0.5)] md:hidden"
               style={{
                 paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
               }}
             >
               <div
-                className="flex shrink-0 flex-col items-center border-b border-white/10 px-4 pt-2"
+                className="flex shrink-0 flex-col items-center border-b border-black/10 px-4 pt-2 dark:border-white/10"
                 role="presentation"
               >
-                <span className="mb-2 h-1 w-10 shrink-0 rounded-full bg-white/20" aria-hidden />
+                <span className="mb-2 h-1 w-10 shrink-0 rounded-full bg-black/15 dark:bg-white/20" aria-hidden />
                 <div className="flex w-full items-center justify-between pb-2">
-                  <h2 className="font-display text-lg text-white">Game</h2>
+                  <h2 className="font-display text-lg text-text dark:text-white">Game</h2>
                   <button
                     type="button"
-                    className="touch-manipulation min-h-[44px] min-w-[44px] rounded-lg px-2 text-sm font-semibold text-cyan-300/90"
+                    className="touch-manipulation min-h-[44px] min-w-[44px] rounded-lg px-2 text-sm font-semibold text-header dark:text-cyan-300/90"
                     onClick={() => setSheetOpen(false)}
                   >
                     Close
@@ -172,37 +172,37 @@ export function GamePlayMobileHud({
 
               <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]">
                 {moveError ? (
-                  <p className="mb-2 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-300">
+                  <p className="mb-2 rounded-lg bg-red-500/15 px-3 py-2 text-sm text-red-700 dark:text-red-300">
                     {moveError}
                   </p>
                 ) : null}
                 {hintMessage ? (
-                  <p className="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
+                  <p className="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
                     {hintMessage}
                   </p>
                 ) : null}
 
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted">
                   Moves
                 </p>
                 {movesForDisplay.length === 0 ? (
-                  <p className="text-sm text-slate-400">Starting position</p>
+                  <p className="text-sm text-muted">Starting position</p>
                 ) : (
-                  <ol className="space-y-1 font-mono text-[11px] text-slate-200">
+                  <ol className="space-y-1 font-mono text-[11px] text-text/90 dark:text-slate-200">
                     {movesForDisplay.map((m, i) => (
                       <li key={`m-${i}`}>{formatMove(m, i)}</li>
                     ))}
                   </ol>
                 )}
 
-                <div className="mt-6 flex flex-col gap-2 border-t border-white/10 pt-4">
+                <div className="mt-6 flex flex-col gap-2 border-t border-black/10 pt-4 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => {
                       onDownload();
                       setSheetOpen(false);
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] py-3 text-sm font-semibold text-white"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.04] py-3 text-sm font-semibold text-text dark:border-white/15 dark:bg-white/[0.06] dark:text-white"
                   >
                     <span aria-hidden>⬇</span>
                     Download record
@@ -213,7 +213,7 @@ export function GamePlayMobileHud({
                       onSettings();
                       setSheetOpen(false);
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] py-3 text-sm font-semibold text-white"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.04] py-3 text-sm font-semibold text-text dark:border-white/15 dark:bg-white/[0.06] dark:text-white"
                   >
                     <span aria-hidden>⚙</span>
                     Settings
@@ -225,7 +225,7 @@ export function GamePlayMobileHud({
                         onOpenRules();
                         setSheetOpen(false);
                       }}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.06] py-3 text-sm font-semibold text-white"
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-black/10 bg-black/[0.04] py-3 text-sm font-semibold text-text dark:border-white/15 dark:bg-white/[0.06] dark:text-white"
                     >
                       Rules
                     </button>
@@ -259,10 +259,10 @@ function IconButton({
       disabled={disabled}
       title={title}
       onClick={onClick}
-      className={`touch-manipulation flex min-h-[48px] min-w-[44px] flex-col items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] px-1.5 py-1 text-[10px] font-semibold text-slate-200 transition active:scale-[0.97] ${
+      className={`touch-manipulation flex min-h-[48px] min-w-[44px] flex-col items-center justify-center rounded-xl border border-black/10 bg-black/[0.04] px-1.5 py-1 text-[10px] font-semibold text-text transition active:scale-[0.97] dark:border-white/10 dark:bg-white/[0.05] dark:text-slate-200 ${
         disabled
           ? "cursor-not-allowed opacity-35"
-          : "hover:border-white/20 hover:bg-white/[0.08]"
+          : "hover:border-black/20 hover:bg-black/[0.08] dark:hover:border-white/20 dark:hover:bg-white/[0.08]"
       }`}
     >
       <span className="text-lg leading-none" aria-hidden>
@@ -291,15 +291,12 @@ function IconButtonWithBadge({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className={`relative touch-manipulation flex min-h-[48px] min-w-[44px] flex-col items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-1.5 py-1 text-[10px] font-semibold text-cyan-200/95 transition active:scale-[0.97] ${
-        disabled ? "cursor-not-allowed opacity-35" : "hover:border-cyan-400/50"
+      className={`relative touch-manipulation flex min-h-[48px] min-w-[44px] flex-col items-center justify-center rounded-xl border border-header/35 bg-header/15 px-1.5 py-1 text-[10px] font-semibold text-header transition active:scale-[0.97] dark:border-cyan-500/30 dark:bg-cyan-500/15 dark:text-cyan-200/95 ${
+        disabled ? "cursor-not-allowed opacity-35" : "hover:border-header/50 dark:hover:border-cyan-400/50"
       }`}
     >
       {badgeCount > 0 ? (
-        <span
-          className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-          style={{ backgroundColor: "#E85D4C" }}
-        >
+        <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
           {badgeCount > 99 ? "99+" : badgeCount}
         </span>
       ) : null}

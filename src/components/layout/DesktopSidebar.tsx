@@ -1,6 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FeedbackLink } from "@/components/feedback/FeedbackLink";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 const links = [
   { to: "/home", label: "Play", desc: "Home & matches" },
@@ -27,7 +28,7 @@ export function DesktopSidebar() {
               `group relative rounded-2xl px-4 py-3 transition ${
                 isActive
                   ? "bg-active/90 text-text shadow-md"
-                  : "text-text/85 hover:bg-black/5"
+                  : "text-text/85 hover:bg-black/5 dark:hover:bg-white/10"
               }`
             }
           >
@@ -49,6 +50,9 @@ export function DesktopSidebar() {
           </NavLink>
         ))}
       </nav>
+      <div className="mb-3 px-2">
+        <ThemeToggle variant="compact" />
+      </div>
       <FeedbackLink className="mb-3 block px-2 text-sm font-medium text-text/70 underline-offset-2 hover:text-text hover:underline">
         Report an issue
       </FeedbackLink>

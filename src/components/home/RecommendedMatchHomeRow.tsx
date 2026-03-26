@@ -28,7 +28,7 @@ export function RecommendedMatchHomeRow({ data, onPress }: Props) {
     <button
       type="button"
       onClick={onPress}
-      className="flex w-full items-center justify-between border-b border-black/[0.06] py-4 text-left transition hover:bg-black/[0.02] active:bg-black/[0.04] md:rounded-xl md:border-0 md:px-4 md:py-5 md:hover:shadow-card"
+      className="flex w-full items-center justify-between border-b border-black/[0.06] py-4 text-left transition hover:bg-black/[0.02] active:bg-black/[0.04] dark:border-white/[0.08] dark:hover:bg-white/[0.04] md:rounded-xl md:border-0 md:px-4 md:py-5 md:hover:shadow-card"
     >
       <div className="min-w-0 flex-1 pr-3">
         <p className="text-[17px] font-bold leading-tight text-text">Recommended match</p>
@@ -64,8 +64,7 @@ export function RecommendedMatchHomeRow({ data, onPress }: Props) {
         <MiniBoardPreview variant="friend" />
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
           <div
-            className="flex h-[52px] w-[52px] items-center justify-center rounded-xl border-2 border-white/95 text-sm font-bold text-text shadow-lg"
-            style={{ backgroundColor: "#F5E6A8" }}
+            className="flex h-[52px] w-[52px] items-center justify-center rounded-xl border-2 border-white/95 bg-avatar text-sm font-bold text-text shadow-lg"
             aria-hidden
           >
             {initials(opp.username)}

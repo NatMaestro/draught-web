@@ -26,7 +26,7 @@ export function QuickActionRow({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-2xl border border-header/20 bg-white/65 px-4 py-3.5 text-left shadow-sm transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45"
+      className="flex w-full items-center gap-3 rounded-2xl border border-header/20 bg-white/65 px-4 py-3.5 text-left shadow-sm transition hover:bg-white/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-45 dark:bg-sheet/50 dark:hover:bg-sheet/70"
     >
       <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-sheet/90 text-text shadow-inner">
         {icon}
@@ -71,8 +71,7 @@ export function FriendsStickyHeader({
     >
       <Link
         to="/"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition hover:bg-header/15"
-        style={{ backgroundColor: "#F5E6A8" }}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-avatar text-text transition hover:bg-header/15"
         aria-label="Back to play menu"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
@@ -85,8 +84,7 @@ export function FriendsStickyHeader({
       <button
         type="button"
         onClick={onCopyInvite}
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition hover:opacity-90"
-        style={{ backgroundColor: "#F5E6A8" }}
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-avatar text-text transition hover:opacity-90"
         aria-label="Share or copy invite link"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>

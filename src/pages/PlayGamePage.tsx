@@ -76,10 +76,7 @@ export function PlayGamePage() {
   }, []);
 
   return (
-    <div
-      className="relative flex min-h-[100dvh] flex-col bg-cream safe-x pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]"
-      style={{ backgroundColor: "#F0EADA" }}
-    >
+    <div className="relative flex min-h-[100dvh] flex-col bg-cream safe-x pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))]">
       <PlayEntryAuthModal
         open={showPlayEntryGate}
         returnToPath={authReturnPath}
@@ -165,8 +162,7 @@ export function PlayGamePage() {
         <motion.div whileTap={{ scale: 0.99 }}>
           <Link
             to={`/play/matchmaking?${timeQuery}`}
-            className="flex flex-col items-center justify-center rounded-[28px] py-4 text-lg font-bold text-text shadow-md transition hover:opacity-95"
-            style={{ backgroundColor: "#D8A477" }}
+            className="flex flex-col items-center justify-center rounded-[28px] bg-header py-4 text-lg font-bold text-text shadow-md transition hover:opacity-95"
           >
             Start
             <span className="mt-0.5 text-xs font-semibold text-text/80">

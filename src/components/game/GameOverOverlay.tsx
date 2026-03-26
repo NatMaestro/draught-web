@@ -15,9 +15,9 @@ export function GameOverOverlay({ open, copy, onNavigatePlay }: Props) {
   const tone = copy.tone;
   const panelClass =
     tone === "win"
-      ? "border-emerald-500/40 bg-gradient-to-b from-emerald-950/95 via-[#1a1510] to-[#12100c] shadow-[0_0_60px_rgba(16,185,129,0.25)]"
+      ? "border-emerald-500/40 bg-gradient-to-b from-emerald-50 via-sheet to-cream shadow-lg dark:from-emerald-950/95 dark:via-cream dark:to-cream dark:shadow-[0_0_60px_rgba(16,185,129,0.25)]"
       : tone === "lose"
-        ? "border-header/30 bg-gradient-to-b from-[#2a1818]/95 via-[#1a1510] to-[#12100c]"
+        ? "border-header/30 bg-gradient-to-b from-rose-50/90 via-sheet to-cream dark:from-rose-950/40 dark:via-cream dark:to-cream"
         : "border-header/30 bg-sheet";
 
   const titleClass =
@@ -100,7 +100,7 @@ export function GameOverOverlay({ open, copy, onNavigatePlay }: Props) {
 
             {copy.subtitle ? (
               <motion.p
-                className="mt-3 text-sm text-cream/85 sm:text-base"
+                className="mt-3 text-sm text-muted sm:text-base dark:text-cream/85"
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.22, duration: 0.35 }}
@@ -118,8 +118,7 @@ export function GameOverOverlay({ open, copy, onNavigatePlay }: Props) {
               <Link
                 to="/play"
                 onClick={onNavigatePlay}
-                className="inline-flex min-w-[200px] items-center justify-center rounded-full px-8 py-3.5 text-sm font-bold text-text shadow-lg transition hover:brightness-105 active:scale-[0.98]"
-                style={{ backgroundColor: "#EFCA83" }}
+                className="inline-flex min-w-[200px] items-center justify-center rounded-full bg-active px-8 py-3.5 text-sm font-bold text-text shadow-lg transition hover:brightness-105 active:scale-[0.98]"
               >
                 Back to menu
               </Link>

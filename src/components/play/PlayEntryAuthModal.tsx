@@ -37,15 +37,15 @@ export function PlayEntryAuthModal({
         initial={{ y: 24, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", damping: 28, stiffness: 320 }}
-        className="relative z-10 mx-4 mb-[max(1rem,env(safe-area-inset-bottom))] w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1419] p-6 text-slate-100 shadow-2xl sm:mb-0"
+        className="relative z-10 mx-4 mb-[max(1rem,env(safe-area-inset-bottom))] w-full max-w-md rounded-3xl border border-black/10 bg-sheet p-6 text-text shadow-2xl dark:border-white/10 dark:bg-cream dark:text-white sm:mb-0"
       >
         <h2
           id="play-entry-title"
-          className="font-display text-center text-xl tracking-wide text-white"
+          className="font-display text-center text-xl tracking-wide text-text dark:text-white"
         >
           How do you want to play?
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        <p className="mt-2 text-center text-sm text-muted">
           Sign in to save games and resume later. Guests can play but progress
           isn&apos;t kept on your profile.
         </p>
@@ -53,20 +53,20 @@ export function PlayEntryAuthModal({
         <div className="mt-6 flex flex-col gap-3">
           <Link
             to={`/auth/login?returnTo=${returnTo}`}
-            className="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-amber-400 to-amber-600 py-3.5 text-base font-bold text-[#1a1208] shadow-lg transition hover:opacity-95"
+            className="flex w-full items-center justify-center rounded-2xl bg-gradient-to-r from-active to-header py-3.5 text-base font-bold text-text shadow-lg transition hover:opacity-95"
           >
             Log in
           </Link>
           <Link
             to={`/auth/register?returnTo=${returnTo}`}
-            className="flex w-full items-center justify-center rounded-2xl border border-white/15 bg-white/5 py-3.5 text-base font-semibold text-white transition hover:bg-white/10"
+            className="flex w-full items-center justify-center rounded-2xl border border-black/15 bg-black/[0.04] py-3.5 text-base font-semibold text-text transition hover:bg-black/[0.08] dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
           >
             Create account
           </Link>
           <button
             type="button"
             onClick={onPlayAsGuest}
-            className="w-full rounded-2xl border border-cyan-500/35 bg-cyan-500/10 py-3.5 text-base font-semibold text-cyan-100 transition hover:bg-cyan-500/15"
+            className="w-full rounded-2xl border border-header/35 bg-header/10 py-3.5 text-base font-semibold text-text transition hover:bg-header/15 dark:border-cyan-500/35 dark:bg-cyan-500/10 dark:text-cyan-100 dark:hover:bg-cyan-500/15"
           >
             Play as guest
           </button>

@@ -1,13 +1,9 @@
-import { useEffect } from "react";
 import {
   Navigate,
-  Outlet,
   RouterProvider,
   createBrowserRouter,
 } from "react-router-dom";
-import { useSocialWebSocket } from "@/hooks/useSocialWebSocket";
-import { useNavigateWhenChallengeAccepted } from "@/hooks/useNavigateWhenChallengeAccepted";
-import { useAuthStore } from "@/store/authStore";
+import { RootLayout } from "@/components/layout/RootLayout";
 import { AppShell } from "@/components/layout/AppShell";
 import { SplashPage } from "@/pages/SplashPage";
 import { HomePage } from "@/pages/HomePage";
@@ -27,17 +23,6 @@ import { ProfilePage } from "@/pages/ProfilePage";
 import { GameReviewPage } from "@/pages/GameReviewPage";
 import { LeaderboardPage } from "@/pages/LeaderboardPage";
 import { TournamentPage } from "@/pages/TournamentPage";
-
-/** Loads JWT from storage. Must wrap routes so hooks run inside the router context. */
-function RootLayout() {
-  const loadStoredToken = useAuthStore((s) => s.loadStoredToken);
-  useSocialWebSocket();
-  useNavigateWhenChallengeAccepted();
-  useEffect(() => {
-    void loadStoredToken();
-  }, [loadStoredToken]);
-  return <Outlet />;
-}
 
 const router = createBrowserRouter([
   {

@@ -44,7 +44,7 @@ export function PlayLocalPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-cream bg-mesh-radial safe-x pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="min-h-[100dvh] bg-cream bg-mesh-radial safe-x pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-mesh-radial-dark">
       <Link to="/play" className="text-sm font-semibold text-text hover:underline">
         ← Back
       </Link>
@@ -76,8 +76,7 @@ export function PlayLocalPage() {
           disabled={loading}
           whileTap={{ scale: 0.98 }}
           onClick={() => void startGame()}
-          className="mt-10 flex w-full items-center justify-center rounded-2xl py-4 text-base font-bold text-text shadow-md disabled:opacity-50"
-          style={{ backgroundColor: "#EFCA83" }}
+          className="mt-10 flex w-full items-center justify-center rounded-2xl bg-active py-4 text-base font-bold text-text shadow-md disabled:opacity-50"
         >
           <DraughtLoaderButtonContent
             loading={loading}

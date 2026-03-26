@@ -379,7 +379,7 @@ export function Board({
                 mass: 0.55,
               }}
             >
-              <div className="flex h-[min(14vw,56px)] w-[min(14vw,56px)] items-center justify-center rounded-full ring-2 ring-amber-300/80 ring-offset-2 ring-offset-[#F0EADA]">
+              <div className="flex h-[min(14vw,56px)] w-[min(14vw,56px)] items-center justify-center rounded-full ring-2 ring-amber-300/80 ring-offset-2 ring-offset-cream">
                 <Piece
                   value={dragVisual.cellValue}
                   className="h-full w-full"

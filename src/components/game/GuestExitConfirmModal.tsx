@@ -30,14 +30,14 @@ export function GuestExitConfirmModal({
       <motion.div
         initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-sm rounded-2xl border border-white/15 bg-[#0f1419] p-6 text-slate-100 shadow-2xl"
+        className="w-full max-w-sm rounded-2xl border border-black/10 bg-sheet p-6 text-text shadow-2xl dark:border-white/15 dark:bg-cream dark:text-white"
       >
-        <h2 id="guest-exit-title" className="font-display text-xl text-white">
+        <h2 id="guest-exit-title" className="font-display text-xl text-text dark:text-white">
           Leave game?
         </h2>
-        <p id="guest-exit-desc" className="mt-2 text-sm leading-relaxed text-slate-400">
+        <p id="guest-exit-desc" className="mt-2 text-sm leading-relaxed text-muted">
           You&apos;re playing as a guest. Leaving now will{" "}
-          <strong className="text-amber-200">forfeit</strong> this match. Guest
+          <strong className="text-amber-700 dark:text-amber-200">forfeit</strong> this match. Guest
           games aren&apos;t saved to a profile.
         </p>
         <div className="mt-6 flex flex-col gap-2 sm:flex-row-reverse sm:justify-end">
@@ -58,7 +58,7 @@ export function GuestExitConfirmModal({
             type="button"
             disabled={busy}
             onClick={onStay}
-            className="rounded-xl border border-white/20 bg-white/5 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-50"
+            className="rounded-xl border border-black/15 bg-black/[0.04] px-4 py-3 text-sm font-semibold text-text transition hover:bg-black/[0.08] disabled:opacity-50 dark:border-white/20 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
           >
             Stay in game
           </button>

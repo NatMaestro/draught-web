@@ -6,6 +6,8 @@ export type WsChatMessage = {
   sender: string;
   text: string;
   created_at: string;
+  /** Echoed from client when sending; used to replace optimistic rows. */
+  client_nonce?: string;
 };
 
 export type WsChatTypingPayload = {
@@ -57,7 +59,7 @@ type UseGameWebSocketOptions = {
   onMoveUpdate?: (payload: WsMovePayload) => void;
   onGameState?: (payload: WsGameStatePayload) => void;
   onGameOver?: (payload: WsGameOverPayload) => void;
-  onChatMessage?: (msg: WsChatMessage & { type?: string }) => void;
+  onChatMessage?: (msg: WsChatMessage & { type?: string; client_nonce?: string }) => void;
   onChatTyping?: (payload: WsChatTypingPayload) => void;
   onError?: (detail: string) => void;
 };
@@ -105,8 +107,12 @@ export function useGameWebSocket({
   }, []);
 
   const sendChat = useCallback(
-    (text: string, sender: string) => {
-      sendJson({ type: "chat", text, sender });
+    (text: string, sender: string, clientNonce?: string) => {
+      const payload: Record<string, unknown> = { type: "chat", text, sender };
+      if (clientNonce && clientNonce.length > 0) {
+        payload.client_nonce = clientNonce;
+      }
+      sendJson(payload);
     },
     [sendJson],
   );

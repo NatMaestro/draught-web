@@ -22,8 +22,7 @@ export function MoreSubpageLayout({
       >
         <Link
           to={backTo}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition hover:bg-header/15"
-          style={{ backgroundColor: "#F5E6A8" }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-avatar text-text transition hover:bg-header/15"
           aria-label={`Back to ${backLabel}`}
         >
           <svg
@@ -62,7 +61,7 @@ export function MoreHubLinkRow({
   return (
     <Link
       to={to}
-      className="flex w-full items-center gap-3 rounded-2xl border border-header/15 bg-white/50 px-3 py-3 text-left shadow-sm transition hover:bg-white/80 active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-2xl border border-header/15 bg-white/50 px-3 py-3 text-left shadow-sm transition hover:bg-white/80 active:scale-[0.99] dark:bg-sheet/45 dark:hover:bg-sheet/65"
     >
       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sheet/90 text-text shadow-inner">
         {icon}

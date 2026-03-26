@@ -59,8 +59,7 @@ export function LeaderboardPage() {
       >
         <Link
           to="/more"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-text transition hover:bg-header/15"
-          style={{ backgroundColor: "#F5E6A8" }}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-avatar text-text transition hover:bg-header/15"
           aria-label="Back to More"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>
@@ -80,8 +79,7 @@ export function LeaderboardPage() {
 
         {you ? (
           <div
-            className="mt-4 rounded-2xl border border-header/25 px-4 py-3 shadow-sm"
-            style={{ backgroundColor: "#F5E6A8" }}
+            className="mt-4 rounded-2xl border border-header/25 bg-avatar px-4 py-3 shadow-sm"
           >
             <p className="text-xs font-semibold uppercase tracking-wide text-text/80">Your position</p>
             <p className="mt-1 font-display text-2xl font-semibold text-text">
@@ -114,15 +112,16 @@ export function LeaderboardPage() {
                   <li
                     key={`${row.id}-${row.rank}`}
                     className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${
-                      mine ? "border-text/35 bg-white/70" : "border-header/15 bg-white/45"
+                      mine
+                        ? "border-text/35 bg-white/70 dark:border-header/30 dark:bg-sheet/55"
+                        : "border-header/15 bg-white/45 dark:bg-sheet/40"
                     }`}
                   >
                     <span className="w-8 shrink-0 text-center font-display text-lg font-semibold tabular-nums text-text">
                       {row.rank}
                     </span>
                     <div
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-text"
-                      style={{ backgroundColor: mine ? "#EFCA83" : "#E8DFD0" }}
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-text ${mine ? "bg-active" : "bg-row-muted"}`}
                     >
                       {initialsFromUsername(row.username)}
                     </div>
@@ -145,8 +144,7 @@ export function LeaderboardPage() {
                   type="button"
                   disabled={loadingMore}
                   onClick={() => void load(offset, true)}
-                  className="inline-flex min-w-[10rem] items-center justify-center rounded-full px-5 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
-                  style={{ backgroundColor: "#D8A477" }}
+                  className="inline-flex min-w-[10rem] items-center justify-center rounded-full bg-header px-5 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
                 >
                   <DraughtLoaderButtonContent
                     loading={loadingMore}

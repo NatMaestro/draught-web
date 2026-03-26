@@ -93,8 +93,7 @@ export function LoginPage() {
           whileTap={{ scale: 0.98 }}
           disabled={isLoading}
           onClick={() => void handleLogin()}
-          className="w-full rounded-xl py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
-          style={{ backgroundColor: "#EFCA83" }}
+          className="w-full rounded-xl bg-active py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
         >
           <DraughtLoaderButtonContent
             loading={isLoading}

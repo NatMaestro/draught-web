@@ -101,7 +101,7 @@ export function DraughtLoader({
   if (variant === "fullscreen") {
     return (
       <div
-        className={`flex min-h-[100dvh] flex-col items-center justify-center bg-cream bg-mesh-radial px-6 ${wrapperClassName ?? ""}`}
+        className={`flex min-h-[100dvh] flex-col items-center justify-center bg-cream bg-mesh-radial px-6 dark:bg-mesh-radial-dark ${wrapperClassName ?? ""}`}
         role="status"
         aria-live="polite"
         aria-busy="true"

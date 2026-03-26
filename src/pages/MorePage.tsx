@@ -5,6 +5,7 @@ import { FEEDBACK_FORM_URL } from "@/lib/config";
 import { subscribeToPushNotifications } from "@/lib/push";
 import { useAuthStore } from "@/store/authStore";
 import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 function MoreMenuIconWrap({
   children,
@@ -60,7 +61,7 @@ function MoreMenuRow({
     </>
   );
   const cls =
-    "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition hover:bg-white/55 active:scale-[0.99]";
+    "flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition hover:bg-white/55 active:scale-[0.99] dark:hover:bg-sheet/60";
 
   if (to) {
     return (
@@ -116,15 +117,18 @@ export function MorePage() {
 
         <nav
           aria-label="More menu"
-          className="rounded-3xl border border-header/15 bg-white/45 px-2 py-1 shadow-card backdrop-blur-sm"
+          className="rounded-3xl border border-header/15 bg-white/45 px-2 py-1 shadow-card backdrop-blur-sm dark:border-header/25 dark:bg-sheet/40"
         >
+          <div className="border-b border-header/10 px-2 pb-3 pt-2 dark:border-header/20">
+            <ThemeToggle />
+          </div>
           <div className="pt-1">
           <MoreMenuRow
             to="/home"
             label="Stats"
             description="Dashboard, history & challenges"
             icon={
-              <MoreMenuIconWrap className="bg-[#EFCA83]/90">
+              <MoreMenuIconWrap className="bg-active/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" />
                 </svg>
@@ -136,7 +140,7 @@ export function MorePage() {
             label="Profile"
             description={isAuthenticated && username ? `Signed in as ${username}` : "Ratings & game record"}
             icon={
-              <MoreMenuIconWrap className="bg-[#A8C97A]/85">
+              <MoreMenuIconWrap className="bg-success/85">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
@@ -149,7 +153,7 @@ export function MorePage() {
             label="Friends"
             description="Invite, search & play together"
             icon={
-              <MoreMenuIconWrap className="bg-[#8BB4E8]/90">
+              <MoreMenuIconWrap className="bg-icon-sky/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" />
                   <circle cx="9" cy="7" r="4" />
@@ -164,7 +168,7 @@ export function MorePage() {
               label="Notifications"
               description="Alerts & friend activity"
               icon={
-                <MoreMenuIconWrap className="bg-[#E8A598]/85">
+                <MoreMenuIconWrap className="bg-icon-coral/85">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" />
                     <path d="M13.73 21a2 2 0 01-3.46 0" />
@@ -194,7 +198,7 @@ export function MorePage() {
             label="Puzzle"
             description="Spot the winning move"
             icon={
-              <MoreMenuIconWrap className="bg-[#C49AD9]/80">
+              <MoreMenuIconWrap className="bg-icon-purple/80">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="opacity-90">
                   <path d="M10.5 4.5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S9 6.83 9 6s.67-1.5 1.5-1.5zm-6 6c.83 0 1.5.67 1.5 1.5S5.33 13.5 4.5 13.5 3 12.83 3 12s.67-1.5 1.5-1.5zm6 6c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S9 18.83 9 18s.67-1.5 1.5-1.5zm6-6c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S15 12.83 15 12s.67-1.5 1.5-1.5zm0-6c.83 0 1.5.67 1.5 1.5S16.33 7.5 15.5 7.5 14 6.83 14 6s.67-1.5 1.5-1.5zm6 6c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5S20 12.83 20 12s.67-1.5 1.5-1.5z" />
                 </svg>
@@ -206,7 +210,7 @@ export function MorePage() {
             label="Train"
             description="Lessons & drills"
             icon={
-              <MoreMenuIconWrap className="bg-[#9BD4C9]/90">
+              <MoreMenuIconWrap className="bg-icon-mint/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                   <path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5" />
@@ -221,7 +225,7 @@ export function MorePage() {
             label="Play online"
             description="Match, clock & game modes hub"
             icon={
-              <MoreMenuIconWrap className="bg-[#D8A477]/90">
+              <MoreMenuIconWrap className="bg-header/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="opacity-95">
                   <path d="M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z" />
                 </svg>
@@ -233,7 +237,7 @@ export function MorePage() {
             label="Matchmaking"
             description="Find an opponent automatically"
             icon={
-              <MoreMenuIconWrap className="bg-[#F5E6A8]/95">
+              <MoreMenuIconWrap className="bg-avatar/95">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 6v6l4 2" strokeLinecap="round" />
@@ -246,7 +250,7 @@ export function MorePage() {
             label="Leaderboard"
             description="Global rating standings"
             icon={
-              <MoreMenuIconWrap className="bg-[#E8C66B]/90">
+              <MoreMenuIconWrap className="bg-icon-gold/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M8 21h8M12 17v4M7 4h10v3a5 5 0 01-10 0V4z" strokeLinejoin="round" />
                   <path d="M7 7H4a2 2 0 000 4h3M17 7h3a2 2 0 010 4h-3" strokeLinecap="round" />
@@ -259,7 +263,7 @@ export function MorePage() {
             label="Local draughts"
             description="Same device, two players"
             icon={
-              <MoreMenuIconWrap className="bg-[#B8A88A]/85">
+              <MoreMenuIconWrap className="bg-icon-stone/85">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="2" y="7" width="20" height="14" rx="2" />
                   <path d="M16 3v4M8 3v4" strokeLinecap="round" />
@@ -272,7 +276,7 @@ export function MorePage() {
             label="vs computer"
             description="Practice against the engine"
             icon={
-              <MoreMenuIconWrap className="bg-[#7A9E6F]/90">
+              <MoreMenuIconWrap className="bg-icon-olive/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <rect x="10" y="7" width="4" height="9" rx="1" />
                   <path d="M6 3h12v4H6zM9 21h6" strokeLinecap="round" />
@@ -286,7 +290,7 @@ export function MorePage() {
             label="Tournaments"
             description="Roadmap & how to play ranked meanwhile"
             icon={
-              <MoreMenuIconWrap className="bg-[#E8C66B]/90">
+              <MoreMenuIconWrap className="bg-icon-gold/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M8 21h8M12 17v4M7 4h10v3a5 5 0 01-10 0V4z" strokeLinejoin="round" />
                   <path d="M7 7H4a2 2 0 000 4h3M17 7h3a2 2 0 010 4h-3" strokeLinecap="round" />
@@ -302,7 +306,7 @@ export function MorePage() {
               label="Membership"
               description="Your rating & stats"
               icon={
-                <MoreMenuIconWrap className="bg-[#6BA3D4]/90">
+                <MoreMenuIconWrap className="bg-icon-blue/90">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" className="scale-90">
                     <path d="M12 2l2.4 7.4h7.8l-6.3 4.6 2.4 7.4L12 16.8 5.7 21.4l2.4-7.4L1.8 9.4h7.8z" />
                   </svg>
@@ -313,9 +317,9 @@ export function MorePage() {
           <div className="py-1">
             {FEEDBACK_FORM_URL ? (
               <FeedbackLink
-                className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition hover:bg-white/55"
+                className="flex w-full items-center gap-3 rounded-2xl px-2 py-2.5 text-left transition hover:bg-white/55 dark:hover:bg-sheet/60"
               >
-                <MoreMenuIconWrap className="bg-[#A8C97A]/90">
+                <MoreMenuIconWrap className="bg-success/90">
                   <span className="text-lg font-bold leading-none">?</span>
                 </MoreMenuIconWrap>
                 <span className="min-w-0 flex-1 text-left font-semibold text-text">Support & feedback</span>
@@ -334,7 +338,7 @@ export function MorePage() {
               </FeedbackLink>
             ) : (
               <div className="flex items-start gap-3 rounded-2xl border border-dashed border-header/25 bg-sheet/40 px-3 py-3 text-sm text-muted">
-                <MoreMenuIconWrap className="bg-[#A8C97A]/60">
+                <MoreMenuIconWrap className="bg-success/60">
                   <span className="text-lg font-bold leading-none text-text/80">?</span>
                 </MoreMenuIconWrap>
                 <span>
@@ -349,7 +353,7 @@ export function MorePage() {
           </div>
         </nav>
 
-        <div id="more-settings" className="scroll-mt-4 mt-6 space-y-4 rounded-3xl border border-header/15 bg-white/50 p-5 shadow-card backdrop-blur-sm">
+        <div id="more-settings" className="scroll-mt-4 mt-6 space-y-4 rounded-3xl border border-header/15 bg-white/50 p-5 shadow-card backdrop-blur-sm dark:border-header/25 dark:bg-sheet/45">
           <h2 className="font-display text-xl text-text">Settings</h2>
           {isAuthenticated ? (
             <>
@@ -368,8 +372,7 @@ export function MorePage() {
             <div className="flex flex-col gap-2 sm:flex-row">
               <Link
                 to="/auth/login"
-                className="flex-1 rounded-2xl px-4 py-3 text-center text-sm font-semibold text-text transition hover:opacity-95"
-                style={{ backgroundColor: "#EFCA83" }}
+                className="flex-1 rounded-2xl bg-active px-4 py-3 text-center text-sm font-semibold text-text transition hover:opacity-95"
               >
                 Log in
               </Link>
@@ -392,8 +395,7 @@ export function MorePage() {
                 type="button"
                 disabled={pushBusy}
                 onClick={() => void onEnablePush()}
-                className="mt-3 flex w-full items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
-                style={{ backgroundColor: "#D8A477" }}
+                className="mt-3 flex w-full items-center justify-center rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
               >
                 <DraughtLoaderButtonContent
                   loading={pushBusy}

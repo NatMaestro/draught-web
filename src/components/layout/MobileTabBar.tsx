@@ -47,7 +47,7 @@ function MenuIcon({ active }: { active: boolean }) {
 export function MobileTabBar() {
   return (
     <nav
-      className="safe-pb fixed bottom-0 left-0 right-0 z-40 border-t border-black/5 bg-tab-bar/95 backdrop-blur-md md:hidden"
+      className="safe-pb fixed bottom-0 left-0 right-0 z-40 border-t border-black/5 bg-tab-bar/95 backdrop-blur-md dark:border-white/10 md:hidden"
       style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
     >
       <div className="mx-auto flex max-w-lg items-end justify-around px-1 pt-2">

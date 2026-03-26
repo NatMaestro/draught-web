@@ -111,16 +111,12 @@ export function HomePage() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-cream md:rounded-none md:py-0">
-      <header
-        className="sticky top-0 z-30 flex items-center gap-2 px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]"
-        style={{ backgroundColor: "#D8A477" }}
-      >
+      <header className="sticky top-0 z-30 flex items-center gap-2 bg-header px-3 pb-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <div className="flex min-h-[40px] min-w-0 flex-1 items-center justify-start">
           {isAuthenticated ? (
             <Link
               to="/home/profile"
-              className="flex h-10 w-10 items-center justify-center rounded-full font-bold text-text transition hover:opacity-90"
-              style={{ backgroundColor: "#F5E6A8" }}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-avatar font-bold text-text transition hover:opacity-90"
               aria-label="Profile and game history"
             >
               {initialsFromUsername(username)}
@@ -152,8 +148,7 @@ export function HomePage() {
           {isAuthenticated ? (
             <Link
               to="/play/friends"
-              className="relative flex h-10 w-10 items-center justify-center rounded-full text-text transition hover:opacity-90"
-              style={{ backgroundColor: "#F5E6A8" }}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-avatar text-text transition hover:opacity-90"
               aria-label="Friends, invites, and notifications"
             >
               <svg
@@ -171,10 +166,7 @@ export function HomePage() {
                 <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
               </svg>
               {unreadSocial > 0 ? (
-                <span
-                  className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-text"
-                  style={{ backgroundColor: "#E85D4C" }}
-                >
+                <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
                   {unreadSocial > 99 ? "99+" : unreadSocial}
                 </span>
               ) : null}
@@ -182,8 +174,7 @@ export function HomePage() {
           ) : (
             <Link
               to="/auth/register"
-              className="rounded-full px-3.5 py-2 text-sm font-semibold text-text"
-              style={{ backgroundColor: "#E8C99A" }}
+              className="rounded-full bg-peach px-3.5 py-2 text-sm font-semibold text-text"
             >
               Sign Up
             </Link>
@@ -198,7 +189,7 @@ export function HomePage() {
           transition={{ duration: 0.4 }}
           className="mx-auto max-w-xl md:grid md:max-w-none md:grid-cols-2 md:gap-8 md:pt-6"
         >
-          <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm">
+          <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm dark:md:bg-sheet/50">
             {isAuthenticated && incoming.length > 0 ? (
               <IncomingChallengesSection
                 challenges={incoming}
@@ -283,8 +274,7 @@ export function HomePage() {
             </p>
             <Link
               to="/play"
-              className="mt-8 inline-flex rounded-full px-10 py-4 text-lg font-bold text-text shadow-md transition hover:scale-[1.02]"
-              style={{ backgroundColor: "#EFCA83" }}
+              className="mt-8 inline-flex rounded-full bg-active px-10 py-4 text-lg font-bold text-text shadow-md transition hover:scale-[1.02]"
             >
               Start playing
             </Link>
@@ -296,8 +286,7 @@ export function HomePage() {
         <motion.div className="pointer-events-auto w-full max-w-xl" whileTap={{ scale: 0.98 }}>
           <Link
             to="/play"
-            className="flex w-full items-center justify-center rounded-[28px] py-4 text-[22px] font-bold text-text shadow-lift"
-            style={{ backgroundColor: "#D8A477" }}
+            className="flex w-full items-center justify-center rounded-[28px] bg-header py-4 text-[22px] font-bold text-text shadow-lift"
           >
             Play
           </Link>

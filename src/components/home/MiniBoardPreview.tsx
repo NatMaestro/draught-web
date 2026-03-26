@@ -53,11 +53,10 @@ export function MiniBoardPreview({
         return (
           <div
             key={i}
-            className="flex items-center justify-center"
+            className={`flex items-center justify-center ${isDark ? "bg-darkTile" : "bg-lightTile"}`}
             style={{
               width: TILE_SIZE,
               height: TILE_SIZE,
-              backgroundColor: isDark ? "#3b2200" : "#e6c3a5",
             }}
           >
             {(isTopPiece || isBottomPiece) && (
@@ -79,11 +78,10 @@ export function MiniBoardPreview({
                   }}
                 >
                   <div
-                    className="rounded-full opacity-60"
+                    className="rounded-full bg-white opacity-60"
                     style={{
                       width: "40%",
                       height: "40%",
-                      backgroundColor: "#fff",
                     }}
                   />
                 </div>

@@ -119,8 +119,7 @@ export function PlayBotRightPanel({
             disabled={loading}
             whileTap={{ scale: loading ? 1 : 0.98 }}
             onClick={onPlay}
-            className="flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
-            style={{ backgroundColor: "#16a34a" }}
+            className="flex w-full items-center justify-center rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
           >
             <DraughtLoaderButtonContent
               loading={loading}
@@ -130,7 +129,7 @@ export function PlayBotRightPanel({
             />
           </motion.button>
           {error ? (
-            <p className="text-center text-xs text-red-800" role="alert">
+            <p className="text-center text-xs text-red-800 dark:text-red-200" role="alert">
               {error}
             </p>
           ) : null}
@@ -156,25 +155,25 @@ export function PlayBotRightPanel({
               {error}
             </p>
           ) : null}
-          <div className="flex gap-2 rounded-2xl border border-white/10 bg-[#0c0f14]/92 p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+          <div className="flex gap-2 rounded-2xl border border-black/10 bg-sheet/95 p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-cream/90 dark:shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
             <button
               type="button"
               disabled={loading}
               onClick={() => setPickerOpen(true)}
-              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-cyan-500/25 bg-white/[0.06] px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-50"
+              className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-header/30 bg-black/[0.03] px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-50 dark:border-cyan-500/25 dark:bg-white/[0.06]"
             >
               <span className="text-2xl leading-none" aria-hidden>
                 {selected.emoji}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-cyan-300/80">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-header dark:text-cyan-300/80">
                   Opponent
                 </p>
-                <p className="truncate text-sm font-bold text-white">
+                <p className="truncate text-sm font-bold text-text dark:text-white">
                   {selected.name}
                 </p>
               </div>
-              <span className="shrink-0 rounded-lg bg-cyan-500/20 px-2 py-1 text-[11px] font-bold text-cyan-200">
+              <span className="shrink-0 rounded-lg bg-header/20 px-2 py-1 text-[11px] font-bold text-text dark:bg-cyan-500/20 dark:text-cyan-200">
                 Change
               </span>
             </button>
@@ -183,12 +182,7 @@ export function PlayBotRightPanel({
               disabled={loading}
               whileTap={{ scale: loading ? 1 : 0.97 }}
               onClick={onPlay}
-              className="flex shrink-0 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-bold text-white shadow-lg disabled:opacity-50 min-h-[48px] min-w-[5.5rem]"
-              style={{
-                background:
-                  "linear-gradient(145deg, #22c55e 0%, #15803d 55%, #166534 100%)",
-                boxShadow: "0 0 24px -4px rgba(34, 197, 94, 0.45)",
-              }}
+              className="flex min-h-[48px] min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 px-3 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_-4px_rgba(34,197,94,0.45)] disabled:opacity-50"
             >
               <DraughtLoaderButtonContent
                 loading={loading}

@@ -1,4 +1,6 @@
 import type { MoveRecord } from "@/hooks/useGamePlay";
+import type { WsChatMessage } from "@/hooks/useGameWebSocket";
+import { GameChatPanel } from "@/components/game/GameChatPanel";
 import { GamePlayMobileHud } from "@/components/game/GamePlayMobileHud";
 
 function formatMove(m: MoveRecord | null | undefined, index: number): string {
@@ -38,6 +40,17 @@ type Props = {
   onOpenRules?: () => void;
   busy: boolean;
   gameOver: boolean;
+  /** md+: chat shares this column with moves — board keeps full width. */
+  desktopChatOpen?: boolean;
+  onCloseDesktopChat?: () => void;
+  chatMessages?: WsChatMessage[];
+  onSendChat?: (text: string) => void;
+  chatSenderLabel?: string;
+  chatDisabled?: boolean;
+  chatConnected?: boolean;
+  chatPeerTyping?: boolean;
+  chatPeerTypingName?: string | null;
+  onChatTypingActivity?: (active: boolean) => void;
 };
 
 /**
@@ -60,6 +73,16 @@ export function GamePlayRightPanel({
   onOpenRules,
   busy,
   gameOver,
+  desktopChatOpen = false,
+  onCloseDesktopChat,
+  chatMessages = [],
+  onSendChat,
+  chatSenderLabel = "Guest",
+  chatDisabled = false,
+  chatConnected = false,
+  chatPeerTyping = false,
+  chatPeerTypingName = null,
+  onChatTypingActivity,
 }: Props) {
   const movesForDisplay = (
     Array.isArray(moveHistory) ? moveHistory : []
@@ -67,6 +90,27 @@ export function GamePlayRightPanel({
 
   const undoEnabled =
     canUndo && movesForDisplay.length > 0 && !busy && !gameOver;
+
+  const movesListInner = (
+    <>
+      <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
+        Moves
+      </p>
+      {movesForDisplay.length === 0 ? (
+        <p className="text-xs text-muted">Starting position</p>
+      ) : (
+        <ol className="min-h-0 space-y-1 font-mono text-[11px] text-text/90 sm:text-xs">
+          {movesForDisplay.map((m, i) => (
+            <li key={`move-${i}`}>{formatMove(m, i)}</li>
+          ))}
+        </ol>
+      )}
+    </>
+  );
+
+  const showDesktopChatSplit = Boolean(
+    showChat && desktopChatOpen && onSendChat && onCloseDesktopChat,
+  );
 
   return (
     <>
@@ -99,22 +143,46 @@ export function GamePlayRightPanel({
         ) : null}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain border-b border-header/20 px-3 py-2">
-        <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
-          Moves
-        </p>
-        {movesForDisplay.length === 0 ? (
-          <p className="text-xs text-muted">Starting position</p>
-        ) : (
-          <ol className="min-h-0 space-y-1 font-mono text-[11px] text-text/90 sm:text-xs">
-            {movesForDisplay.map((m, i) => (
-              <li key={`move-${i}`}>
-                {formatMove(m, i)}
-              </li>
-            ))}
-          </ol>
-        )}
-      </div>
+      {showDesktopChatSplit ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden border-b border-header/20">
+          <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden px-3 py-2">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {movesListInner}
+            </div>
+          </div>
+          <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden border-t border-header/20 bg-cream/40">
+            <div className="flex shrink-0 items-center justify-between gap-2 border-b border-header/15 px-3 py-1.5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+                Chat
+              </p>
+              <button
+                type="button"
+                onClick={onCloseDesktopChat}
+                className="rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:bg-header/10 hover:text-text"
+              >
+                Close
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-hidden px-2 pb-2 pt-1">
+              <GameChatPanel
+                messages={chatMessages}
+                onSend={onSendChat}
+                senderLabel={chatSenderLabel}
+                disabled={chatDisabled}
+                connected={chatConnected}
+                variant="modal"
+                peerTyping={chatPeerTyping}
+                peerTypingName={chatPeerTypingName}
+                onTypingActivity={onChatTypingActivity}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain border-b border-header/20 px-3 py-2">
+          {movesListInner}
+        </div>
+      )}
 
       <div className="shrink-0 space-y-2 p-3">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -167,7 +235,11 @@ export function GamePlayRightPanel({
               type="button"
               disabled={busy || gameOver}
               onClick={onOpenChat}
-              className="relative flex flex-col items-center justify-center gap-1 rounded-xl border border-header/30 bg-cream/90 py-3 text-xs font-semibold text-text transition hover:bg-sheet disabled:opacity-40"
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl border py-3 text-xs font-semibold text-text transition hover:bg-sheet disabled:opacity-40 ${
+                desktopChatOpen
+                  ? "border-header/50 bg-active/40 ring-2 ring-header/30"
+                  : "border-header/30 bg-cream/90"
+              }`}
               title="Chat"
             >
               <span className="text-lg" aria-hidden>
@@ -175,10 +247,7 @@ export function GamePlayRightPanel({
               </span>
               Chat
               {chatUnreadCount > 0 ? (
-                <span
-                  className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
-                  style={{ backgroundColor: "#E85D4C" }}
-                >
+                <span className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
                   {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
                 </span>
               ) : null}

@@ -18,7 +18,7 @@ type Props = {
 
 /**
  * Mobile / small screens: bottom sheet + backdrop.
- * Desktop uses `GameChatDesktopAside` — this tree is `md:hidden`.
+ * On md+, chat lives in the right panel with moves — this modal is `md:hidden`.
  */
 export function GameChatModal({
   open,

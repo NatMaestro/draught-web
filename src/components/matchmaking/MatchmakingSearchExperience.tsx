@@ -127,8 +127,7 @@ export function MatchmakingSearchExperience({
                 style={{ zIndex: isCenter ? 10 : 1 }}
               >
                 <div
-                  className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-text ring-2 ring-header/30"
-                  style={{ backgroundColor: "#F5E6A8" }}
+                  className="flex h-11 w-11 items-center justify-center rounded-full bg-avatar text-sm font-bold text-text ring-2 ring-header/30"
                   aria-hidden
                 >
                   {p.name.slice(0, 2).toUpperCase()}

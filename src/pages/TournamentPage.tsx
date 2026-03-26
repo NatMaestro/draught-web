@@ -9,7 +9,7 @@ export function TournamentPage() {
         what we’re building toward and what you can do today.
       </p>
 
-      <section className="mt-6 space-y-3 rounded-2xl border border-header/15 bg-white/45 px-4 py-4 shadow-sm">
+      <section className="mt-6 space-y-3 rounded-2xl border border-header/15 bg-white/45 px-4 py-4 shadow-sm dark:bg-sheet/45">
         <h2 className="font-display text-lg font-semibold text-text">Planned experience</h2>
         <ul className="list-inside list-disc space-y-1.5 text-sm text-muted">
           <li>Join a tournament from the play hub with the same clocks you use for rated games.</li>

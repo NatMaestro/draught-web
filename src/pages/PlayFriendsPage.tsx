@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import {
   ChallengeBadgeButton,
@@ -40,7 +40,10 @@ function scrollToId(id: string) {
 
 export function PlayFriendsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
+  /** Notifications `<details>`: open by default; reopen each visit to /play/friends. */
+  const [notifSectionOpen, setNotifSectionOpen] = useState(true);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -134,6 +137,12 @@ export function PlayFriendsPage() {
     window.addEventListener(DRAUGHT_SOCIAL_REFRESH_EVENT, onRefresh);
     return () => window.removeEventListener(DRAUGHT_SOCIAL_REFRESH_EVENT, onRefresh);
   }, [load]);
+
+  useEffect(() => {
+    if (location.pathname === "/play/friends") {
+      setNotifSectionOpen(true);
+    }
+  }, [location.pathname]);
 
   const qFromUrl = searchParams.get("q");
   useEffect(() => {
@@ -422,13 +431,10 @@ export function PlayFriendsPage() {
   const renderDiscoverRow = (u: GamePlayerPublic) => (
     <li
       key={u.id}
-      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-header/15 bg-white/55 px-3 py-2.5"
+      className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-header/15 bg-white/55 px-3 py-2.5 dark:bg-sheet/50"
     >
       <div className="flex min-w-0 items-center gap-2">
-        <div
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold text-text"
-          style={{ backgroundColor: "#E8C99A" }}
-        >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-peach text-xs font-bold text-text">
           {initialsFromUsername(u.username)}
         </div>
         <span className="truncate font-medium text-text">{u.username}</span>
@@ -442,8 +448,7 @@ export function PlayFriendsPage() {
           <button
             type="button"
             onClick={() => void onFriendRequest(u.id)}
-            className="rounded-full px-3 py-1.5 text-xs font-semibold text-text"
-            style={{ backgroundColor: "#E8C99A" }}
+            className="rounded-full bg-peach px-3 py-1.5 text-xs font-semibold text-text"
           >
             Add friend
           </button>
@@ -473,8 +478,7 @@ export function PlayFriendsPage() {
         </p>
         <Link
           to={`/auth/login?returnTo=${encodeURIComponent(ret)}`}
-          className="mt-6 inline-flex w-fit rounded-full px-6 py-3 text-sm font-semibold text-text shadow-sm"
-          style={{ backgroundColor: "#EFCA83" }}
+          className="mt-6 inline-flex w-fit rounded-full bg-active px-6 py-3 text-sm font-semibold text-text shadow-sm"
         >
           Log in
         </Link>
@@ -486,7 +490,7 @@ export function PlayFriendsPage() {
     frIn.length + frOut.length + chIn.length + chOut.length > 0;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-cream bg-mesh-radial">
+    <div className="flex min-h-[100dvh] flex-col bg-cream bg-mesh-radial dark:bg-mesh-radial-dark">
       <FriendsStickyHeader onCopyInvite={() => void shareOrCopyInvite()} />
 
       <div className="mx-auto w-full max-w-lg flex-1 space-y-4 px-4 pb-6 pt-4">
@@ -504,7 +508,7 @@ export function PlayFriendsPage() {
         ) : null}
 
         {err ? (
-          <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+          <p className="rounded-xl border border-red-200/80 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">
             {err}
           </p>
         ) : null}
@@ -525,7 +529,7 @@ export function PlayFriendsPage() {
             label="Facebook friends"
             onClick={() => scrollToId("section-connect")}
             icon={
-              <span className="text-lg font-bold" style={{ color: "#1877F2" }} aria-hidden>
+              <span className="text-lg font-bold text-brand-fb" aria-hidden>
                 f
               </span>
             }
@@ -576,7 +580,7 @@ export function PlayFriendsPage() {
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Search by name or username"
             autoComplete="off"
-            className="w-full rounded-2xl border border-header/25 bg-white/90 py-3.5 pl-11 pr-4 text-sm text-text placeholder:text-muted shadow-inner"
+            className="w-full rounded-2xl border border-header/25 bg-white/90 py-3.5 pl-11 pr-4 text-sm text-text placeholder:text-muted shadow-inner dark:bg-sheet/80"
           />
         </div>
 
@@ -593,10 +597,7 @@ export function PlayFriendsPage() {
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
           <div className="flex items-center gap-2">
             <h2 className="font-display text-xl font-semibold text-text">Friends</h2>
-            <span
-              className="rounded-full px-2.5 py-0.5 text-sm font-bold text-text"
-              style={{ backgroundColor: "#F5E6A8" }}
-            >
+            <span className="rounded-full bg-avatar px-2.5 py-0.5 text-sm font-bold text-text">
               {friends.length}
             </span>
           </div>
@@ -621,7 +622,7 @@ export function PlayFriendsPage() {
         {loading ? (
           <DraughtLoader variant="section" label="Loading friends" className="py-6" />
         ) : friends.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-header/25 bg-white/40 px-4 py-6 text-center text-sm text-muted">
+          <p className="rounded-2xl border border-dashed border-header/25 bg-white/40 px-4 py-6 text-center text-sm text-muted dark:bg-sheet/35">
             No friends yet — use search or Connect accounts below.
           </p>
         ) : (
@@ -629,12 +630,9 @@ export function PlayFriendsPage() {
             {friends.map((u) => (
               <li
                 key={u.id}
-                className="flex items-center gap-3 rounded-2xl border border-header/15 bg-white/55 py-2 pl-2 pr-2"
+                className="flex items-center gap-3 rounded-2xl border border-header/15 bg-white/55 py-2 pl-2 pr-2 dark:bg-sheet/50"
               >
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-text"
-                  style={{ backgroundColor: "#D8A477" }}
-                >
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-header text-sm font-bold text-text">
                   {initialsFromUsername(u.username)}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -651,7 +649,7 @@ export function PlayFriendsPage() {
         )}
 
         <details
-          className="group rounded-2xl border border-header/20 bg-white/45 open:bg-white/55"
+          className="group rounded-2xl border border-header/20 bg-white/45 open:bg-white/55 dark:border-header/30 dark:bg-sheet/45 dark:open:bg-sheet/55"
           open={hasActivity}
         >
           <summary className="cursor-pointer list-none px-4 py-3 font-semibold text-text [&::-webkit-details-marker]:hidden">
@@ -685,8 +683,7 @@ export function PlayFriendsPage() {
                         <button
                           type="button"
                           onClick={() => void onAcceptChallenge(c.id)}
-                          className="rounded-full px-3 py-1 text-xs font-semibold text-text"
-                          style={{ backgroundColor: "#A8C97A" }}
+                          className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-text"
                         >
                           Play
                         </button>
@@ -717,7 +714,7 @@ export function PlayFriendsPage() {
                       <span>
                         To <strong>{c.to_user.username}</strong>
                         {c.status === "accepted" ? (
-                          <span className="ml-2 text-xs font-semibold text-emerald-800">
+                          <span className="ml-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                             · Accepted
                           </span>
                         ) : null}
@@ -731,8 +728,7 @@ export function PlayFriendsPage() {
                             onClick={() =>
                               navigate(`/play/game/${encodeURIComponent(c.game_id!)}`)
                             }
-                            className="rounded-full px-3 py-1 text-xs font-semibold text-text"
-                            style={{ backgroundColor: "#A8C97A" }}
+                            className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-text"
                           >
                             Join game
                           </button>
@@ -770,8 +766,7 @@ export function PlayFriendsPage() {
                             await socialApi.acceptFriendRequest(r.id);
                             await load();
                           }}
-                          className="rounded-full px-3 py-1 text-xs font-semibold text-text"
-                          style={{ backgroundColor: "#A8C97A" }}
+                          className="rounded-full bg-success px-3 py-1 text-xs font-semibold text-text"
                         >
                           Accept
                         </button>
@@ -827,7 +822,11 @@ export function PlayFriendsPage() {
         </details>
 
         <div id="section-notifications" className="scroll-mt-4">
-        <details className="rounded-2xl border border-header/20 bg-white/45">
+        <details
+          className="rounded-2xl border border-header/20 bg-white/45 open:bg-white/55 dark:border-header/30 dark:bg-sheet/45 dark:open:bg-sheet/55"
+          open={notifSectionOpen}
+          onToggle={(e) => setNotifSectionOpen(e.currentTarget.open)}
+        >
           <summary className="cursor-pointer list-none px-4 py-3 font-semibold text-text [&::-webkit-details-marker]:hidden">
             <span className="flex items-center justify-between">
               Notifications
@@ -856,26 +855,49 @@ export function PlayFriendsPage() {
                     typeof n.payload?.game_id === "string"
                       ? n.payload.game_id
                       : null;
+                  const gs = n.game_status;
+                  const isChallengeAccepted = n.kind === "challenge_accepted";
+                  const gameEnded =
+                    isChallengeAccepted &&
+                    Boolean(notifGameId) &&
+                    (gs === "finished" || gs === "abandoned");
+                  /** Server could not find the game row (deleted). */
+                  const gameMissing =
+                    isChallengeAccepted &&
+                    Boolean(notifGameId) &&
+                    gs === null;
+                  /** Join only while the match is live; `undefined` = older API without game_status. */
                   const showJoinGame =
-                    n.kind === "challenge_accepted" &&
-                    notifGameId != null &&
-                    notifGameId.length > 0;
+                    isChallengeAccepted &&
+                    Boolean(notifGameId) &&
+                    !gameEnded &&
+                    !gameMissing &&
+                    (gs === undefined ||
+                      gs === "active" ||
+                      gs === "waiting");
                   return (
                     <li
                       key={n.id}
                       className={`rounded-xl border px-3 py-2 text-sm ${
                         n.read_at
-                          ? "border-header/10 bg-white/40"
+                          ? "border-header/10 bg-white/40 dark:bg-sheet/35"
                           : "border-header/25 bg-sheet/90"
                       }`}
                     >
                       <p className="font-semibold text-text">{n.title}</p>
                       {n.body ? <p className="text-muted">{n.body}</p> : null}
-                      {showJoinGame ? (
+                      {gameEnded ? (
+                        <p className="mt-2 text-xs font-semibold text-muted">
+                          Game ended — review from history if needed.
+                        </p>
+                      ) : gameMissing ? (
+                        <p className="mt-2 text-xs text-muted">
+                          This game is no longer available.
+                        </p>
+                      ) : showJoinGame && notifGameId ? (
                         <Link
                           to={`/play/game/${encodeURIComponent(notifGameId)}`}
-                          className="mt-2 inline-flex rounded-full px-3 py-1.5 text-xs font-semibold text-text"
-                          style={{ backgroundColor: "#A8C97A" }}
+                          className="mt-2 inline-flex rounded-full bg-success px-3 py-1.5 text-xs font-semibold text-text"
                         >
                           Join game
                         </Link>
@@ -898,7 +920,7 @@ export function PlayFriendsPage() {
             Facebook: link and load suggestions (friends who also use this app). TikTok: link profile only.
           </p>
 
-          <div className="rounded-xl border border-header/10 bg-white/45 p-3">
+          <div className="rounded-xl border border-header/10 bg-white/45 p-3 dark:bg-sheet/40">
             <p className="text-xs font-semibold text-text">Facebook</p>
             {!FB_APP_ID ? (
               <p className="mt-1 text-xs text-muted">
@@ -915,8 +937,7 @@ export function PlayFriendsPage() {
                     type="button"
                     disabled={fbLinkBusy || facebookLinked}
                     onClick={() => void onLinkFacebook()}
-                    className="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
-                    style={{ backgroundColor: "#1877F2" }}
+                    className="inline-flex items-center justify-center rounded-full bg-brand-fb px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50"
                   >
                     <DraughtLoaderButtonContent
                       loading={fbLinkBusy}
@@ -938,8 +959,7 @@ export function PlayFriendsPage() {
                     type="button"
                     disabled={fbBusy || !facebookLinked}
                     onClick={() => void onSuggestionsFacebook()}
-                    className="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold disabled:opacity-50"
-                    style={{ backgroundColor: "#E8C99A" }}
+                    className="inline-flex items-center justify-center rounded-full bg-peach px-3 py-1.5 text-xs font-semibold text-text disabled:opacity-50"
                   >
                     <DraughtLoaderButtonContent
                       loading={fbBusy}
@@ -958,7 +978,7 @@ export function PlayFriendsPage() {
             <ul className="space-y-2">{fbSuggestions.map((u) => renderDiscoverRow(u))}</ul>
           ) : null}
 
-          <div className="rounded-xl border border-header/10 bg-white/45 p-3">
+          <div className="rounded-xl border border-header/10 bg-white/45 p-3 dark:bg-sheet/40">
             <p className="text-xs font-semibold text-text">TikTok</p>
             {!tiktokServerConfigured ? (
               <p className="mt-1 text-xs text-muted">Configure TikTok keys and redirect on the server.</p>
@@ -972,8 +992,7 @@ export function PlayFriendsPage() {
                     type="button"
                     disabled={tiktokBusy || tiktokLinked}
                     onClick={() => void onTikTokStart()}
-                    className="inline-flex items-center justify-center rounded-full px-3 py-1.5 text-xs font-semibold text-cream disabled:opacity-50"
-                    style={{ backgroundColor: "#111111" }}
+                    className="inline-flex items-center justify-center rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black"
                   >
                     <DraughtLoaderButtonContent
                       loading={tiktokBusy}
@@ -1000,7 +1019,7 @@ export function PlayFriendsPage() {
         <div id="section-opponents" className="scroll-mt-4 pb-4">
           <h3 className="mb-2 font-display text-lg font-semibold text-text">Recent opponents</h3>
           {opponents.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-header/25 bg-white/35 px-4 py-5 text-center text-sm text-muted">
+            <p className="rounded-2xl border border-dashed border-header/25 bg-white/35 px-4 py-5 text-center text-sm text-muted dark:bg-sheet/30">
               Finish an online game vs another player to see them here.
             </p>
           ) : (

@@ -67,10 +67,7 @@ export function ProfilePage() {
       className="px-4 pb-28 pt-4 md:pb-8"
     >
       <div className="mb-6 flex items-center gap-3">
-        <div
-          className="flex h-14 w-14 items-center justify-center rounded-full text-lg font-bold text-text"
-          style={{ backgroundColor: "#F5E6A8" }}
-        >
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-avatar text-lg font-bold text-text">
           {profile?.username?.slice(0, 2).toUpperCase() ?? "?"}
         </div>
         <div>

@@ -5,7 +5,7 @@ import { MobileTabBar } from "@/components/layout/MobileTabBar";
 
 export function AppShell() {
   return (
-    <div className="flex min-h-[100dvh] bg-cream bg-mesh-radial">
+    <div className="flex min-h-[100dvh] bg-cream bg-mesh-radial dark:bg-mesh-radial-dark">
       <DesktopSidebar />
       <motion.main
         initial={{ opacity: 0.96 }}

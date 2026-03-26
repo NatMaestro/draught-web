@@ -22,21 +22,18 @@ function BoardLogo() {
         return (
           <div
             key={i}
-            className="flex items-center justify-center"
+            className={`flex items-center justify-center ${isDark ? "bg-darkTile" : "bg-lightTile"}`}
             style={{
               width: 20,
               height: 20,
-              backgroundColor: isDark ? "#3D2B1F" : "#F5E6D3",
             }}
           >
             {hasPiece ? (
               <div
-                className="rounded-full border"
+                className={`rounded-full border ${isP1 ? "border-darkTile bg-header" : "border-header bg-avatar"}`}
                 style={{
                   width: 12,
                   height: 12,
-                  backgroundColor: isP1 ? "#8B7355" : "#D4B896",
-                  borderColor: isP1 ? "#5C4033" : "#8B7355",
                 }}
               />
             ) : null}
@@ -157,8 +154,7 @@ export function RegisterPage() {
           disabled={isLoading}
           aria-busy={isLoading}
           onClick={() => void handleRegister()}
-          className="mt-2 w-full rounded-xl py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
-          style={{ backgroundColor: "#EFCA83" }}
+          className="mt-2 w-full rounded-xl bg-active py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
         >
           <DraughtLoaderButtonContent
             loading={isLoading}

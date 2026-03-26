@@ -2,7 +2,70 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Semantic palette — toggled via `dark` on <html> (see themeStore + inline script in index.html). */
 @layer base {
+  :root {
+    --color-cream: 240 234 218;
+    --color-header: 216 164 119;
+    --color-active: 239 202 131;
+    --color-sheet: 232 224 212;
+    --color-text: 26 26 26;
+    --color-muted: 107 93 79;
+    --color-tab-bar: 232 212 184;
+    --color-tab-active: 212 165 116;
+    --color-dark-tile: 61 43 31;
+    --color-light-tile: 245 230 211;
+    --color-avatar: 245 230 168;
+    --color-time-modal-bg: 237 230 220;
+    --color-time-modal-strip: 229 217 200;
+    /* Accents — buttons, badges, rows (see tailwind.config.js) */
+    --color-peach: 232 201 154;
+    --color-danger: 232 93 76;
+    --color-success: 168 201 122;
+    --color-brand-fb: 24 119 242;
+    --color-ink: 17 17 17;
+    --color-row-muted: 232 223 208;
+    /* More-menu & decorative icon tiles */
+    --color-icon-sky: 139 180 232;
+    --color-icon-coral: 232 165 152;
+    --color-icon-purple: 196 154 217;
+    --color-icon-mint: 155 212 201;
+    --color-icon-gold: 232 198 107;
+    --color-icon-stone: 184 168 138;
+    --color-icon-olive: 122 158 111;
+    --color-icon-blue: 107 163 212;
+  }
+
+  .dark {
+    --color-cream: 18 16 14;
+    --color-header: 200 155 108;
+    --color-active: 180 140 88;
+    --color-sheet: 40 36 32;
+    --color-text: 240 236 228;
+    --color-muted: 163 152 138;
+    --color-tab-bar: 48 44 38;
+    --color-tab-active: 170 130 82;
+    --color-dark-tile: 35 30 26;
+    --color-light-tile: 72 64 56;
+    --color-avatar: 140 118 72;
+    --color-time-modal-bg: 32 28 24;
+    --color-time-modal-strip: 42 38 34;
+    --color-peach: 140 118 95;
+    --color-danger: 220 100 85;
+    --color-success: 130 160 100;
+    --color-brand-fb: 88 160 255;
+    --color-ink: 240 236 228;
+    --color-row-muted: 52 48 44;
+    --color-icon-sky: 100 140 190;
+    --color-icon-coral: 200 130 120;
+    --color-icon-purple: 160 120 180;
+    --color-icon-mint: 120 175 165;
+    --color-icon-gold: 190 165 90;
+    --color-icon-stone: 140 128 110;
+    --color-icon-olive: 100 130 95;
+    --color-icon-blue: 95 140 185;
+  }
+
   html {
     @apply antialiased text-text;
     -webkit-tap-highlight-color: transparent;

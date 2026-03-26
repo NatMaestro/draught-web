@@ -8,7 +8,7 @@ export function TrainPage() {
         page as a quick reference and jump into practice.
       </p>
 
-      <section className="mt-6 space-y-3 rounded-2xl border border-header/15 bg-white/45 px-4 py-4 shadow-sm">
+      <section className="mt-6 space-y-3 rounded-2xl border border-header/15 bg-white/45 px-4 py-4 shadow-sm dark:bg-sheet/45">
         <h2 className="font-display text-lg font-semibold text-text">Game basics</h2>
         <p className="text-sm text-muted">
           This app uses a <strong className="text-text">10×10</strong> board: pieces sit on the playable

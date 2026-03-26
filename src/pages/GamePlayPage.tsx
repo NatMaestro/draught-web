@@ -15,7 +15,6 @@ import { PlayerStatsStrip } from "@/components/game/PlayerStatsStrip";
 import { ResignConfirmModal } from "@/components/game/ResignConfirmModal";
 import { GuestExitConfirmModal } from "@/components/game/GuestExitConfirmModal";
 import { GameChatModal } from "@/components/game/GameChatModal";
-import { GameChatDesktopAside } from "@/components/game/GameChatDesktopAside";
 import {
   RulesHelpModal,
   RulesHeaderIconButton,
@@ -408,7 +407,7 @@ export function GamePlayPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream bg-mesh-radial text-text">
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden overscroll-none bg-cream bg-mesh-radial text-text dark:bg-mesh-radial-dark">
       {/* Mobile: minimal bar — back, logo, rules (settings via bottom dock) */}
       <header
         className="relative z-30 grid shrink-0 grid-cols-[2.75rem_1fr_2.75rem] items-center border-b border-header/20 bg-cream/95 pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pt-[max(0.35rem,env(safe-area-inset-top))] pb-1.5 backdrop-blur-md md:hidden"
@@ -615,22 +614,6 @@ export function GamePlayPage() {
                 </div>
               </div>
 
-              {SHOW_GAME_CHAT && !isAiGame && chatModalOpen ? (
-                <GameChatDesktopAside
-                  onClose={() => setChatModalOpen(false)}
-                  messages={chatMessages}
-                  onSend={sendChatMessage}
-                  senderLabel={
-                    isAuthenticated && username ? username : "Guest"
-                  }
-                  disabled={busy}
-                  connected={wsConnected}
-                  peerTyping={chatPeerTyping}
-                  peerTypingName={chatPeerTypingName}
-                  onTypingActivity={sendChatTypingActivity}
-                />
-              ) : null}
-
               <GamePlayRightPanel
                 turnLabel={turnLabel}
                 moveError={moveError}
@@ -639,9 +622,23 @@ export function GamePlayPage() {
                 showChat={SHOW_GAME_CHAT && !isAiGame}
                 onOpenChat={
                   SHOW_GAME_CHAT && !isAiGame
-                    ? () => setChatModalOpen(true)
+                    ? () => setChatModalOpen((v) => !v)
                     : undefined
                 }
+                desktopChatOpen={
+                  SHOW_GAME_CHAT && !isAiGame && chatModalOpen
+                }
+                onCloseDesktopChat={() => setChatModalOpen(false)}
+                chatMessages={chatMessages}
+                onSendChat={sendChatMessage}
+                chatSenderLabel={
+                  isAuthenticated && username ? username : "Guest"
+                }
+                chatDisabled={busy}
+                chatConnected={wsConnected}
+                chatPeerTyping={chatPeerTyping}
+                chatPeerTypingName={chatPeerTypingName}
+                onChatTypingActivity={sendChatTypingActivity}
                 chatUnreadCount={chatUnreadCount}
                 onResign={() => setResignConfirmOpen(true)}
                 canUndo={canUndo}
@@ -701,10 +698,7 @@ export function GamePlayPage() {
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
               className="fixed bottom-0 right-0 top-0 z-[79] flex w-full max-w-sm flex-col border-l border-header/25 bg-sheet shadow-2xl pt-[env(safe-area-inset-top,0px)]"
             >
-              <div
-                className="flex items-center justify-between border-b border-header/25 px-4 py-4 safe-x"
-                style={{ backgroundColor: "#D8A477" }}
-              >
+              <div className="safe-x flex items-center justify-between border-b border-header/25 bg-header px-4 py-4">
                 <h2 className="text-lg font-bold text-text">Game settings</h2>
                 <button
                   type="button"

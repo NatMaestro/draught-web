@@ -25,8 +25,7 @@ export function MatchmakingNoMatchCallout({ onTryAgain }: Props) {
         <button
           type="button"
           onClick={onTryAgain}
-          className="rounded-xl py-3 text-sm font-bold text-text shadow-md"
-          style={{ backgroundColor: "#D8A477" }}
+          className="rounded-xl bg-header py-3 text-sm font-bold text-text shadow-md"
         >
           Try again
         </button>

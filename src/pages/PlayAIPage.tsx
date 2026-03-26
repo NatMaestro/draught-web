@@ -75,20 +75,20 @@ export function PlayAIPage() {
   };
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-cream bg-mesh-radial text-text">
+    <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-cream bg-mesh-radial text-text dark:bg-mesh-radial-dark">
       {/* Mobile: slim glass header — nav duplicated in sidebar on md+ */}
-      <header className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-white/10 bg-gradient-to-b from-[#1e1a14]/92 to-[#12100c]/95 py-2.5 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md md:hidden">
+      <header className="relative z-30 flex shrink-0 items-center justify-between gap-2 border-b border-black/10 bg-sheet/95 py-2.5 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] backdrop-blur-md dark:border-white/10 dark:bg-cream/95 md:hidden">
         <Link
           to="/play"
-          className="touch-manipulation shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm font-semibold text-white/95 shadow-sm transition active:scale-[0.98] min-h-[44px] flex items-center"
+          className="touch-manipulation flex min-h-[44px] shrink-0 items-center rounded-xl border border-black/10 bg-black/5 px-3 py-2.5 text-sm font-semibold text-text shadow-sm transition active:scale-[0.98] dark:border-white/10 dark:bg-white/5 dark:text-white"
         >
           ← Menu
         </Link>
         <div className="min-w-0 flex-1 text-center">
-          <p className="truncate font-display text-base tracking-wide text-white">
+          <p className="truncate font-display text-base tracking-wide text-text dark:text-white">
             Play vs AI
           </p>
-          <p className="truncate text-[11px] text-cyan-200/70">
+          <p className="truncate text-[11px] text-muted dark:text-cyan-200/70">
             {!useClockFromHub
               ? "No clock — casual"
               : minutesFromHub != null
@@ -98,7 +98,6 @@ export function PlayAIPage() {
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <RulesHeaderIconButton
-            variant="dark"
             expanded={rulesOpen}
             onClick={() => setRulesOpen((o) => !o)}
           />

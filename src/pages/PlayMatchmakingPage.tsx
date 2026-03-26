@@ -211,7 +211,7 @@ export function PlayMatchmakingPage() {
   }
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-cream bg-mesh-radial safe-x pb-28 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="flex min-h-[100dvh] flex-col bg-cream bg-mesh-radial safe-x pb-28 pt-[max(1rem,env(safe-area-inset-top))] dark:bg-mesh-radial-dark">
       <div className="mx-auto w-full max-w-md flex-1">
         <Link
           to="/play"
@@ -325,8 +325,7 @@ export function PlayMatchmakingPage() {
               type="button"
               whileTap={{ scale: 0.99 }}
               onClick={() => void startSearch()}
-              className="w-full rounded-[28px] py-4 text-lg font-bold text-text shadow-md disabled:opacity-50"
-              style={{ backgroundColor: "#D8A477" }}
+              className="w-full rounded-[28px] bg-header py-4 text-lg font-bold text-text shadow-md disabled:opacity-50"
             >
               Find opponent
             </motion.button>
