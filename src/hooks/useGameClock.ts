@@ -32,8 +32,9 @@ export function parseClockSnapshot(raw: unknown): ServerClockSnapshot | null {
 }
 
 /**
- * Fischer-style bank: server stores remaining at turn start + `turn_started_at`.
- * Clients sync using `server_now` offset so both players see the same countdown.
+ * Per-turn clock: each turn the player to move has `time_control_sec` seconds; it resets after
+ * they move. Server stores remaining at turn start + `turn_started_at`.
+ * The inactive player’s display uses full `time_control_sec` (their budget on their next turn).
  *
  * @param activeClockTurn — **Server-confirmed** turn (lags optimistic `currentTurn` while a move
  *   is in flight). Pass `confirmedTurnForFlip` from `useGamePlay` so the active timer switches
@@ -126,15 +127,16 @@ export function useGameClock(
         ) {
           elapsed = Math.max(0, (serverNow - turnStart) / 1000);
         }
+        const tc = serverClock.time_control_sec;
         const ct = activeClockTurn === 2 ? 2 : 1;
         if (ct === 1) {
           return {
             p1Seconds: Math.max(0, p1 - elapsed),
-            p2Seconds: Math.max(0, p2),
+            p2Seconds: Math.max(0, tc),
           };
         }
         return {
-          p1Seconds: Math.max(0, p1),
+          p1Seconds: Math.max(0, tc),
           p2Seconds: Math.max(0, p2 - elapsed),
         };
       }

@@ -30,7 +30,7 @@ export const BOARD_ROTATION_MS_MIN = 600;
 export const BOARD_ROTATION_MS_MAX = 4500;
 
 /** Delay between jumps when animating a multi-capture chain (only if motion is allowed). */
-export const MULTI_CAPTURE_STEP_MS = 260;
+export const MULTI_CAPTURE_STEP_MS = 420;
 
 /** Faster step when animating the bot’s multi-capture (vs AI only — human moves keep `MULTI_CAPTURE_STEP_MS`). */
 export const AI_MULTI_CAPTURE_STEP_MS = 110;

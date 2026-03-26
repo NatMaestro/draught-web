@@ -7,8 +7,8 @@ type Props = {
   senderLabel: string;
   disabled?: boolean;
   connected?: boolean;
-  /** Collapsible panel (default) vs always-visible dark sidebar block */
-  variant?: "default" | "embedded";
+  /** Collapsible panel, sidebar block, or full chat modal body */
+  variant?: "default" | "embedded" | "modal";
 };
 
 export function GameChatPanel({
@@ -19,7 +19,7 @@ export function GameChatPanel({
   connected = false,
   variant = "default",
 }: Props) {
-  const [open, setOpen] = useState(variant === "embedded");
+  const [open, setOpen] = useState(variant === "embedded" || variant === "modal");
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -35,6 +35,59 @@ export function GameChatPanel({
     onSend(t);
     setDraft("");
   }, [draft, disabled, onSend]);
+
+  if (variant === "modal") {
+    return (
+      <div className="flex h-full min-h-0 w-full flex-col">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-header/25 bg-cream/90">
+          <div className="min-h-0 flex-1 space-y-1 overflow-y-auto px-3 py-2 text-sm">
+            {messages.length === 0 ? (
+              <p className="py-8 text-center text-muted">No messages yet.</p>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className="rounded-lg bg-sheet/90 px-2 py-1.5 ring-1 ring-header/15"
+                >
+                  <span className="font-semibold text-text">{m.sender}: </span>
+                  <span className="text-text/90">{m.text}</span>
+                </div>
+              ))
+            )}
+            <div ref={bottomRef} />
+          </div>
+          <div className="flex shrink-0 gap-2 border-t border-header/20 p-3">
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  submit();
+                }
+              }}
+              placeholder={senderLabel ? `As ${senderLabel}` : "Message"}
+              disabled={disabled || !connected}
+              className="min-w-0 flex-1 rounded-lg border border-header/30 bg-cream px-3 py-2 text-sm text-text placeholder:text-muted"
+              maxLength={500}
+            />
+            <button
+              type="button"
+              onClick={() => submit()}
+              disabled={disabled || !connected || !draft.trim()}
+              className="shrink-0 rounded-lg bg-header px-4 py-2 text-sm font-bold text-text disabled:opacity-50"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+        {!connected ? (
+          <p className="mt-2 text-center text-xs text-muted">Chat offline — reconnecting…</p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (embedded) {
     return (

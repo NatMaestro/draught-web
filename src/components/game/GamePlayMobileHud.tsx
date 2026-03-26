@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { MoveRecord } from "@/hooks/useGamePlay";
-import type { WsChatMessage } from "@/hooks/useGameWebSocket";
-import { GameChatPanel } from "@/components/game/GameChatPanel";
 
 function formatMove(m: MoveRecord | null | undefined, index: number): string {
   if (m == null) return `${index + 1}. (move)`;
@@ -28,11 +26,8 @@ type Props = {
   moveHistory: MoveRecord[];
   hintMessage: string | null;
   showChat: boolean;
-  chatMessages: WsChatMessage[];
-  sendChatMessage: (text: string) => void;
-  chatSenderLabel: string;
-  chatDisabled: boolean;
-  wsConnected: boolean;
+  onOpenChat?: () => void;
+  chatUnreadCount?: number;
   onResign: () => void;
   canUndo: boolean;
   onUndo: () => void;
@@ -53,11 +48,8 @@ export function GamePlayMobileHud({
   moveHistory,
   hintMessage,
   showChat,
-  chatMessages,
-  sendChatMessage,
-  chatSenderLabel,
-  chatDisabled,
-  wsConnected,
+  onOpenChat,
+  chatUnreadCount = 0,
   onResign,
   canUndo,
   onUndo,
@@ -115,6 +107,15 @@ export function GamePlayMobileHud({
                 disabled={busy || gameOver}
                 onClick={onHint}
               />
+              {showChat && onOpenChat ? (
+                <IconButtonWithBadge
+                  label="Chat"
+                  emoji="💬"
+                  badgeCount={chatUnreadCount}
+                  disabled={busy || gameOver}
+                  onClick={onOpenChat}
+                />
+              ) : null}
               <button
                 type="button"
                 onClick={() => setSheetOpen(true)}
@@ -179,22 +180,6 @@ export function GamePlayMobileHud({
                   <p className="mb-3 rounded-lg bg-amber-500/15 px-3 py-2 text-sm text-amber-100">
                     {hintMessage}
                   </p>
-                ) : null}
-
-                {showChat ? (
-                  <div className="mb-4 rounded-xl border border-white/10 bg-white/[0.04] p-2">
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                      Chat
-                    </p>
-                    <GameChatPanel
-                      messages={chatMessages}
-                      onSend={sendChatMessage}
-                      senderLabel={chatSenderLabel}
-                      disabled={chatDisabled}
-                      connected={wsConnected}
-                      variant="embedded"
-                    />
-                  </div>
                 ) : null}
 
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
@@ -280,6 +265,44 @@ function IconButton({
           : "hover:border-white/20 hover:bg-white/[0.08]"
       }`}
     >
+      <span className="text-lg leading-none" aria-hidden>
+        {emoji}
+      </span>
+      <span className="mt-0.5">{label}</span>
+    </button>
+  );
+}
+
+function IconButtonWithBadge({
+  label,
+  emoji,
+  badgeCount,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  emoji: string;
+  badgeCount: number;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`relative touch-manipulation flex min-h-[48px] min-w-[44px] flex-col items-center justify-center rounded-xl border border-cyan-500/30 bg-cyan-500/15 px-1.5 py-1 text-[10px] font-semibold text-cyan-200/95 transition active:scale-[0.97] ${
+        disabled ? "cursor-not-allowed opacity-35" : "hover:border-cyan-400/50"
+      }`}
+    >
+      {badgeCount > 0 ? (
+        <span
+          className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+          style={{ backgroundColor: "#E85D4C" }}
+        >
+          {badgeCount > 99 ? "99+" : badgeCount}
+        </span>
+      ) : null}
       <span className="text-lg leading-none" aria-hidden>
         {emoji}
       </span>

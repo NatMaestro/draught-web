@@ -116,11 +116,10 @@ export function PlayGamePage() {
         className={`flex flex-1 flex-col gap-3 px-5 pb-6 pt-4 ${showPlayEntryGate ? "pointer-events-none blur-[2px]" : ""}`}
       >
         <p className="text-center text-xs leading-relaxed text-muted">
-          Set a <strong className="font-semibold text-text/90">move clock</strong>{" "}
-          for online games, friend matches, and tournaments. You can use the
-          same setting for{" "}
-          <strong className="font-semibold text-text/90">in-person</strong> play
-          as a reminder (not enforced on-device yet).
+          Choose how much time each player has <strong className="font-semibold text-text/90">per turn</strong>{" "}
+          (the full amount resets after each move; one multi-capture chain counts as one turn). Run out on your turn
+          and you lose. Same setting applies to online, friends, and tournaments; for{" "}
+          <strong className="font-semibold text-text/90">in-person</strong> it&apos;s a reminder only on this device.
         </p>
 
         <div className="overflow-hidden rounded-[20px]">
@@ -147,7 +146,7 @@ export function PlayGamePage() {
               {useClock ? (
                 <>
                   {minutes} min{" "}
-                  <span className="font-normal text-muted">per player</span>
+                  <span className="font-normal text-muted">per turn</span>
                 </>
               ) : (
                 <span className="font-normal text-muted">No time limit</span>

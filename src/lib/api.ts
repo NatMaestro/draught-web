@@ -320,7 +320,7 @@ export type CreateGameOptions = {
   aiDifficulty?: string;
   /** Same-device hot-seat — must create ACTIVE game (no second account). */
   isLocal2p?: boolean;
-  /** Initial bank per player in seconds when `useClock` is true. */
+  /** Seconds per turn when `useClock` is true (resets after each move). */
   timeControlSec?: number;
   /** When false, server does not enforce clocks or time loss. */
   useClock?: boolean;

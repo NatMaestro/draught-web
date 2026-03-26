@@ -1,6 +1,4 @@
 import type { MoveRecord } from "@/hooks/useGamePlay";
-import type { WsChatMessage } from "@/hooks/useGameWebSocket";
-import { GameChatPanel } from "@/components/game/GameChatPanel";
 import { GamePlayMobileHud } from "@/components/game/GamePlayMobileHud";
 
 function formatMove(m: MoveRecord | null | undefined, index: number): string {
@@ -27,11 +25,8 @@ type Props = {
   moveHistory: MoveRecord[];
   hintMessage: string | null;
   showChat: boolean;
-  chatMessages: WsChatMessage[];
-  sendChatMessage: (text: string) => void;
-  chatSenderLabel: string;
-  chatDisabled: boolean;
-  wsConnected: boolean;
+  onOpenChat?: () => void;
+  chatUnreadCount?: number;
   onResign: () => void;
   /** Server allows undo (AI / local guest games with moves). */
   canUndo: boolean;
@@ -54,11 +49,8 @@ export function GamePlayRightPanel({
   moveHistory,
   hintMessage,
   showChat,
-  chatMessages,
-  sendChatMessage,
-  chatSenderLabel,
-  chatDisabled,
-  wsConnected,
+  onOpenChat,
+  chatUnreadCount = 0,
   onResign,
   canUndo,
   onUndo,
@@ -107,19 +99,6 @@ export function GamePlayRightPanel({
         ) : null}
       </div>
 
-      {showChat ? (
-        <div className="shrink-0 border-b border-header/20 px-2 py-2">
-          <GameChatPanel
-            messages={chatMessages}
-            onSend={sendChatMessage}
-            senderLabel={chatSenderLabel}
-            disabled={chatDisabled}
-            connected={wsConnected}
-            variant="embedded"
-          />
-        </div>
-      ) : null}
-
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain border-b border-header/20 px-3 py-2">
         <p className="mb-1 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">
           Moves
@@ -138,7 +117,7 @@ export function GamePlayRightPanel({
       </div>
 
       <div className="shrink-0 space-y-2 p-3">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <button
             type="button"
             disabled={busy || gameOver}
@@ -183,6 +162,28 @@ export function GamePlayRightPanel({
             </span>
             Hint
           </button>
+          {showChat && onOpenChat ? (
+            <button
+              type="button"
+              disabled={busy || gameOver}
+              onClick={onOpenChat}
+              className="relative flex flex-col items-center justify-center gap-1 rounded-xl border border-header/30 bg-cream/90 py-3 text-xs font-semibold text-text transition hover:bg-sheet disabled:opacity-40"
+              title="Chat"
+            >
+              <span className="text-lg" aria-hidden>
+                💬
+              </span>
+              Chat
+              {chatUnreadCount > 0 ? (
+                <span
+                  className="absolute right-1 top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                  style={{ backgroundColor: "#E85D4C" }}
+                >
+                  {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
         </div>
         <div className="flex gap-2">
           <button
@@ -213,11 +214,8 @@ export function GamePlayRightPanel({
       moveHistory={moveHistory}
       hintMessage={hintMessage}
       showChat={showChat}
-      chatMessages={chatMessages}
-      sendChatMessage={sendChatMessage}
-      chatSenderLabel={chatSenderLabel}
-      chatDisabled={chatDisabled}
-      wsConnected={wsConnected}
+      onOpenChat={onOpenChat}
+      chatUnreadCount={chatUnreadCount}
       onResign={onResign}
       canUndo={canUndo}
       onUndo={onUndo}

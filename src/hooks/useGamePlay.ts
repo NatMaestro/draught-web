@@ -261,7 +261,10 @@ function logMove(
   }
 }
 
-export function useGamePlay(gameId: string | undefined) {
+export function useGamePlay(
+  gameId: string | undefined,
+  options?: { chatPanelOpen?: boolean },
+) {
   const soundEnabled = useGameSettingsStore((s) => s.soundEnabled);
   const rotateBoardForTurn = useGameSettingsStore((s) => s.rotateBoardForTurn);
   const accessToken = useAuthStore((s) => s.accessToken);
@@ -335,6 +338,15 @@ export function useGamePlay(gameId: string | undefined) {
   boardRef.current = board;
   const lastMoveRef = useRef<MoveRecord | null>(null);
   const [chatMessages, setChatMessages] = useState<WsChatMessage[]>([]);
+  const [chatUnreadCount, setChatUnreadCount] = useState(0);
+  const chatPanelOpenRef = useRef(false);
+  useEffect(() => {
+    chatPanelOpenRef.current = options?.chatPanelOpen ?? false;
+    if (options?.chatPanelOpen) setChatUnreadCount(0);
+  }, [options?.chatPanelOpen]);
+  useEffect(() => {
+    setChatUnreadCount(0);
+  }, [gameId]);
   const pendingWsMoveRef = useRef(false);
   /** Roll back optimistic board/turn if server rejects the move. */
   const optimisticSnapshotRef = useRef<{
@@ -664,6 +676,7 @@ export function useGamePlay(gameId: string | undefined) {
             created_at: c.created_at,
           })),
         );
+        setChatUnreadCount(0);
       }
       const mc = p.move_count;
       const last = lastAppliedMoveCountRef.current;
@@ -728,6 +741,12 @@ export function useGamePlay(gameId: string | undefined) {
           created_at: msg.created_at,
         },
       ]);
+      if (chatPanelOpenRef.current) return;
+      const me = username?.trim().toLowerCase();
+      const sender = (msg.sender ?? "").trim().toLowerCase();
+      if (me && sender && sender !== me) {
+        setChatUnreadCount((c) => c + 1);
+      }
     },
     onError: (detail) => {
       rollbackOptimistic();
@@ -1691,6 +1710,7 @@ export function useGamePlay(gameId: string | undefined) {
     setMoveError,
     chatMessages,
     sendChatMessage,
+    chatUnreadCount,
     wsConnected: wsReady,
     /**
      * Turn last confirmed by server (hydrate / move response / WS). Lags optimistic

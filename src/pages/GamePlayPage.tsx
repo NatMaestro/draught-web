@@ -14,6 +14,7 @@ import { GamePlaySidebar } from "@/components/game/GamePlaySidebar";
 import { PlayerStatsStrip } from "@/components/game/PlayerStatsStrip";
 import { ResignConfirmModal } from "@/components/game/ResignConfirmModal";
 import { GuestExitConfirmModal } from "@/components/game/GuestExitConfirmModal";
+import { GameChatModal } from "@/components/game/GameChatModal";
 import {
   RulesHelpModal,
   RulesHeaderIconButton,
@@ -43,6 +44,7 @@ export function GamePlayPage() {
   const [resignConfirmOpen, setResignConfirmOpen] = useState(false);
   const [guestExitBusy, setGuestExitBusy] = useState(false);
   const [guestExitModalOpen, setGuestExitModalOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
   const pendingGuestNavigateRef = useRef<(() => void) | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
@@ -93,6 +95,7 @@ export function GamePlayPage() {
     resign,
     chatMessages,
     sendChatMessage,
+    chatUnreadCount,
     wsConnected,
     moveHistory,
     hintMessage,
@@ -103,7 +106,7 @@ export function GamePlayPage() {
     undoLastMove,
     downloadGameRecord,
     confirmedTurnForFlip,
-  } = useGamePlay(gameId);
+  } = useGamePlay(gameId, { chatPanelOpen: chatModalOpen });
 
   const gameOver =
     winner != null || status === "finished" || status === "abandoned";
@@ -492,6 +495,18 @@ export function GamePlayPage() {
         onLeaveAndForfeit={() => void handleGuestExitForfeit()}
       />
 
+      {SHOW_GAME_CHAT && !isAiGame ? (
+        <GameChatModal
+          open={chatModalOpen}
+          onClose={() => setChatModalOpen(false)}
+          messages={chatMessages}
+          onSend={sendChatMessage}
+          senderLabel={isAuthenticated && username ? username : "Guest"}
+          disabled={busy}
+          connected={wsConnected}
+        />
+      ) : null}
+
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:flex-row">
         <GamePlaySidebar
           className="hidden md:flex"
@@ -599,13 +614,12 @@ export function GamePlayPage() {
                 moveHistory={moveHistory}
                 hintMessage={hintMessage}
                 showChat={SHOW_GAME_CHAT && !isAiGame}
-                chatMessages={chatMessages}
-                sendChatMessage={sendChatMessage}
-                chatSenderLabel={
-                  isAuthenticated && username ? username : "Guest"
+                onOpenChat={
+                  SHOW_GAME_CHAT && !isAiGame
+                    ? () => setChatModalOpen(true)
+                    : undefined
                 }
-                chatDisabled={busy || gameOver}
-                wsConnected={wsConnected}
+                chatUnreadCount={chatUnreadCount}
                 onResign={() => setResignConfirmOpen(true)}
                 canUndo={canUndo}
                 onUndo={() => void undoLastMove()}
