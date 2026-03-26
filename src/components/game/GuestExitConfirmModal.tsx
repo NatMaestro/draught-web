@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 
 type Props = {
   open: boolean;
@@ -44,9 +45,14 @@ export function GuestExitConfirmModal({
             type="button"
             disabled={busy}
             onClick={onLeaveAndForfeit}
-            className="rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50"
           >
-            {busy ? "Forfeiting…" : "Leave & forfeit"}
+            <DraughtLoaderButtonContent
+              loading={busy}
+              loadingText="Forfeiting…"
+              idleText="Leave & forfeit"
+              tone="onDark"
+            />
           </button>
           <button
             type="button"

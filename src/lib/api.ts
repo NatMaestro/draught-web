@@ -386,6 +386,10 @@ export const challengesApi = {
     api.get<{ count?: number; results: GameChallenge[] }>(
       "/games/challenges/incoming/",
     ),
+  outgoing: () =>
+    api.get<{ count?: number; results: GameChallenge[] }>(
+      "/games/challenges/outgoing/",
+    ),
   create: (to_user_id: number, rematch_game_id?: string) =>
     api.post<GameChallenge>("/games/challenges/", {
       to_user_id,
@@ -397,6 +401,8 @@ export const challengesApi = {
     ),
   decline: (challengeId: string) =>
     api.post<{ ok: boolean }>(`/games/challenges/${challengeId}/decline/`),
+  cancel: (challengeId: string) =>
+    api.post<{ ok: boolean }>(`/games/challenges/${challengeId}/cancel/`),
 };
 
 export type MatchmakingJoinOptions = {
@@ -429,16 +435,158 @@ export const matchmakingApi = {
     ),
 };
 
+export type UserProfile = {
+  id: number;
+  username: string;
+  email: string;
+  rating: number;
+  games_played: number;
+  games_won: number;
+  created_at?: string;
+  /** Present when backend supports social linking (`apps.users` profile). */
+  facebook_linked?: boolean;
+  tiktok_linked?: boolean;
+};
+
+export type LeaderboardEntry = {
+  rank: number;
+  id: number;
+  username: string;
+  rating: number;
+  games_played: number;
+  games_won: number;
+};
+
+export type LeaderboardResponse = {
+  count: number;
+  results: LeaderboardEntry[];
+  you: LeaderboardEntry | null;
+};
+
 export const usersApi = {
-  profile: () =>
+  profile: () => api.get<UserProfile>("/users/profile/"),
+  /** GET /users/search/?q= — min 2 characters. */
+  search: (q: string) =>
+    api.get<GamePlayerPublic[]>("/users/search/", { params: { q } }),
+  /** Public; auth optional (`you` when signed in). */
+  leaderboard: (params?: { limit?: number; offset?: number; min_games?: number }) =>
+    api.get<LeaderboardResponse>("/users/leaderboard/", { params }),
+};
+
+/** In-app + push notification row. */
+export type SocialNotification = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+export type FriendRequestItem = {
+  id: string;
+  from_user: GamePlayerPublic;
+  to_user: GamePlayerPublic;
+  status: string;
+  created_at: string;
+};
+
+export type RecommendedMatchResponse = {
+  opponent: (GamePlayerPublic & { rating: number }) | null;
+  rating_gap: number;
+  in_rating_band: boolean;
+  head_to_head: { wins: number; losses: number; draws: number };
+};
+
+export const socialApi = {
+  notifications: (unreadOnly?: boolean) =>
+    api.get<{ count?: number; results: SocialNotification[] }>(
+      "/social/notifications/",
+      {
+        params: unreadOnly ? { unread: "1" } : undefined,
+      },
+    ),
+  unreadCount: () =>
+    api.get<{ count: number }>("/social/notifications/unread-count/"),
+  markNotificationsRead: (ids?: string[]) =>
+    api.post<{ ok: boolean; marked: number | string }>(
+      "/social/notifications/mark-read/",
+      ids ? { ids } : {},
+    ),
+  friends: () => api.get<GamePlayerPublic[]>("/social/friends/"),
+  /** Friend closest to your rating + H2H stats; `opponent` null if you have no friends yet. */
+  recommendedMatch: (maxGap?: number) =>
+    api.get<RecommendedMatchResponse>("/social/recommended-match/", {
+      params: maxGap != null ? { max_gap: maxGap } : undefined,
+    }),
+  friendRequestsIncoming: () =>
+    api.get<{ count?: number; results: FriendRequestItem[] }>(
+      "/social/friends/requests/incoming/",
+    ),
+  friendRequestsOutgoing: () =>
+    api.get<{ count?: number; results: FriendRequestItem[] }>(
+      "/social/friends/requests/outgoing/",
+    ),
+  sendFriendRequest: (to_user_id: number) =>
+    api.post<FriendRequestItem>("/social/friends/requests/", { to_user_id }),
+  acceptFriendRequest: (requestId: string) =>
+    api.post<{ ok: boolean }>(
+      `/social/friends/requests/${requestId}/accept/`,
+    ),
+  declineFriendRequest: (requestId: string) =>
+    api.post<{ ok: boolean }>(
+      `/social/friends/requests/${requestId}/decline/`,
+    ),
+  cancelFriendRequest: (requestId: string) =>
+    api.post<{ ok: boolean }>(
+      `/social/friends/requests/${requestId}/cancel/`,
+    ),
+  recentOpponents: () =>
+    api.get<GamePlayerPublic[]>("/social/opponents/recent/"),
+  vapidPublicKey: () =>
+    api.get<{ enabled: boolean; public_key: string | null }>(
+      "/social/push/vapid-public-key/",
+    ),
+  pushSubscribe: (body: {
+    endpoint: string;
+    keys: { p256dh: string; auth: string };
+  }) => api.post<{ ok: boolean }>("/social/push/subscribe/", body),
+  pushUnsubscribe: (endpoint: string) =>
+    api.post<{ ok: boolean; removed: number }>(
+      "/social/push/unsubscribe/",
+      { endpoint },
+    ),
+  linkFacebook: (access_token: string) =>
+    api.post<{ ok: boolean; facebook_linked: boolean }>(
+      "/social/link/facebook/",
+      { access_token },
+    ),
+  unlinkFacebook: () =>
+    api.post<{ ok: boolean; facebook_linked: boolean }>(
+      "/social/unlink/facebook/",
+    ),
+  facebookFriendSuggestions: (access_token: string) =>
+    api.post<{
+      results: GamePlayerPublic[];
+      hint: string;
+    }>("/social/suggestions/facebook/", { access_token }),
+  tiktokConfig: () =>
     api.get<{
-      id: number;
-      username: string;
-      email: string;
-      rating: number;
-      games_played: number;
-      games_won: number;
-    }>("/users/profile/"),
+      configured: boolean;
+      client_key: string | null;
+      redirect_uri: string | null;
+      authorize_url_template: string;
+    }>("/social/tiktok/config/"),
+  linkTikTok: (body: { code: string; redirect_uri: string }) =>
+    api.post<{ ok: boolean; tiktok_linked: boolean }>(
+      "/social/link/tiktok/",
+      body,
+    ),
+  unlinkTikTok: () =>
+    api.post<{ ok: boolean; tiktok_linked: boolean }>(
+      "/social/unlink/tiktok/",
+    ),
 };
 
 export default api;

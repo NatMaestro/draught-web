@@ -29,6 +29,7 @@ import {
   findBotById,
   labelForAiDifficulty,
 } from "@/data/aiBots";
+import { DraughtLoaderGameShell, DraughtLoaderSpinner } from "@/components/ui/DraughtLoader";
 
 const SHOW_GAME_CHAT = import.meta.env.VITE_USE_GAME_WS !== "false";
 
@@ -507,9 +508,7 @@ export function GamePlayPage() {
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           {loading ? (
-            <div className="flex flex-1 items-center justify-center p-8 text-muted">
-              Loading game…
-            </div>
+            <DraughtLoaderGameShell label="Loading game" />
           ) : loadError ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
               <p className="text-red-700">{loadError}</p>
@@ -554,9 +553,10 @@ export function GamePlayPage() {
 
                   <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden py-1 sm:py-2">
                     {busy ? (
-                      <p className="absolute left-1/2 top-1 z-10 -translate-x-1/2 text-center text-xs text-muted">
-                        Working…
-                      </p>
+                      <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 items-center gap-2 text-xs text-muted">
+                        <DraughtLoaderSpinner size="sm" ariaLabel="Working" />
+                        <span>Working…</span>
+                      </div>
                     ) : null}
                     <Board
                       board={board}

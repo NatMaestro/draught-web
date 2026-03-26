@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { gamesApi } from "@/lib/api";
+import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 
 function parseMinutes(raw: string | null): number | null {
   if (raw == null || raw === "") return null;
@@ -75,10 +76,15 @@ export function PlayLocalPage() {
           disabled={loading}
           whileTap={{ scale: 0.98 }}
           onClick={() => void startGame()}
-          className="mt-10 w-full rounded-2xl py-4 text-base font-bold text-text shadow-md disabled:opacity-50"
+          className="mt-10 flex w-full items-center justify-center rounded-2xl py-4 text-base font-bold text-text shadow-md disabled:opacity-50"
           style={{ backgroundColor: "#EFCA83" }}
         >
-          {loading ? "Creating…" : "Start game"}
+          <DraughtLoaderButtonContent
+            loading={loading}
+            loadingText="Creating…"
+            idleText="Start game"
+            tone="onLight"
+          />
         </motion.button>
       </motion.div>
     </div>

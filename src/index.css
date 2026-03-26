@@ -16,6 +16,24 @@
   }
 }
 
+@layer components {
+  /** Staggered 2×2 “checker” pulse — used by DraughtLoader */
+  @keyframes draught-checker-pulse {
+    0%,
+    100% {
+      opacity: 0.2;
+      transform: scale(0.88);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .draught-checker-cell {
+    animation: draught-checker-pulse 1.15s ease-in-out infinite;
+  }
+}
+
 @layer utilities {
   .safe-pb {
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);

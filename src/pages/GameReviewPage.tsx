@@ -5,6 +5,7 @@ import { gamesApi, challengesApi, type GameDetail, type GamePlayerPublic } from 
 import { normalizeBoardState } from "@/lib/boardUtils";
 import { boardAfterPlyCount, nextTurnAfterPlyCount } from "@/lib/replayBoard";
 import { useAuthStore } from "@/store/authStore";
+import { DraughtLoader, DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 
 function playerPublic(
   p: GameDetail["player_one"],
@@ -102,8 +103,8 @@ export function GameReviewPage() {
 
   if (!game) {
     return (
-      <div className="flex min-h-[40dvh] items-center justify-center text-muted">
-        Loading…
+      <div className="flex min-h-[40dvh] items-center justify-center px-4">
+        <DraughtLoader variant="section" label="Loading game" className="py-4" />
       </div>
     );
   }
@@ -161,7 +162,7 @@ export function GameReviewPage() {
           <button
             type="button"
             disabled={rematchBusy}
-            className="w-full rounded-2xl bg-header py-3 text-sm font-bold text-text disabled:opacity-50"
+            className="flex w-full items-center justify-center rounded-2xl bg-header py-3 text-sm font-bold text-text disabled:opacity-50"
             onClick={async () => {
               setRematchBusy(true);
               try {
@@ -174,7 +175,12 @@ export function GameReviewPage() {
               }
             }}
           >
-            {rematchBusy ? "Sending…" : "Request rematch"}
+            <DraughtLoaderButtonContent
+              loading={rematchBusy}
+              loadingText="Sending…"
+              idleText="Request rematch"
+              tone="onLight"
+            />
           </button>
           <p className="mt-1 text-center text-[11px] text-muted">
             Sends a game request. They’ll see it on their home screen.

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { matchmakingApi, usersApi } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
+import { DraughtLoader } from "@/components/ui/DraughtLoader";
 import { gamePlayPath } from "@/lib/deepLink";
 
 type Phase = "idle" | "searching";
@@ -167,11 +168,7 @@ export function PlayMatchmakingPage() {
   }, [stopPolling]);
 
   if (authLoading || !isAuthenticated) {
-    return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-cream bg-mesh-radial text-muted">
-        Loading…
-      </div>
-    );
+    return <DraughtLoader variant="fullscreen" ariaLabel="Loading" />;
   }
 
   return (

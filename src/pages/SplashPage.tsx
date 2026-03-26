@@ -12,7 +12,7 @@ function SplashMark() {
   }
   return (
     <img
-      src="/assets/splash-icon.png"
+      src="../../assets/splash-icon.png"
       alt=""
       width={200}
       height={200}

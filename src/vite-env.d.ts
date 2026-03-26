@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_WS_BASE?: string;
   /** Optional Google Form URL for user feedback / issue reports (opens in new tab). */
   readonly VITE_FEEDBACK_FORM_URL?: string;
+  /** Meta app id for Facebook Login (Play with friends → link account). */
+  readonly VITE_FACEBOOK_APP_ID?: string;
 }
 
 interface ImportMeta {

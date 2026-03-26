@@ -7,18 +7,22 @@ import { MiniBoardPreview } from "@/components/home/MiniBoardPreview";
 import { RatingCardsStrip } from "@/components/home/RatingCardsStrip";
 import { GameHistorySection } from "@/components/home/GameHistorySection";
 import { IncomingChallengesSection } from "@/components/home/IncomingChallengesSection";
+import { RecommendedMatchHomeRow } from "@/components/home/RecommendedMatchHomeRow";
 import {
   gamesApi,
   usersApi,
   challengesApi,
+  socialApi,
   type GameHistoryItem,
   type GameChallenge,
+  type RecommendedMatchResponse,
 } from "@/lib/api";
 import {
   loadResumeSnapshot,
   RESUME_STORAGE_KEY,
   type ResumeGameSnapshot,
 } from "@/lib/resumeGameStorage";
+import { DRAUGHT_SOCIAL_REFRESH_EVENT } from "@/hooks/useSocialWebSocket";
 
 function initialsFromUsername(username: string | null): string {
   if (!username?.trim()) return "?";
@@ -41,14 +45,17 @@ export function HomePage() {
   } | null>(null);
   const [history, setHistory] = useState<GameHistoryItem[]>([]);
   const [incoming, setIncoming] = useState<GameChallenge[]>([]);
+  const [unreadSocial, setUnreadSocial] = useState(0);
+  const [recommended, setRecommended] = useState<RecommendedMatchResponse | null>(null);
 
   const refreshDashboard = useCallback(async () => {
     if (!isAuthenticated) return;
     try {
-      const [p, h, inc] = await Promise.all([
+      const [p, h, inc, unread] = await Promise.all([
         usersApi.profile(),
         gamesApi.history(),
         challengesApi.incoming().catch(() => ({ data: { results: [] as GameChallenge[] } })),
+        socialApi.unreadCount().catch(() => ({ data: { count: 0 } })),
       ]);
       setProfile({
         rating: p.data.rating,
@@ -57,8 +64,15 @@ export function HomePage() {
       });
       setHistory(h.data.results ?? []);
       setIncoming(inc.data.results ?? []);
+      setUnreadSocial(unread.data.count ?? 0);
     } catch {
       /* ignore */
+    }
+    try {
+      const r = await socialApi.recommendedMatch(200);
+      setRecommended(r.data);
+    } catch {
+      setRecommended(null);
     }
   }, [isAuthenticated]);
 
@@ -75,6 +89,18 @@ export function HomePage() {
 
   useEffect(() => {
     void refreshDashboard();
+  }, [refreshDashboard]);
+
+  useEffect(() => {
+    if (!isAuthenticated) setRecommended(null);
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void refreshDashboard();
+    };
+    window.addEventListener(DRAUGHT_SOCIAL_REFRESH_EVENT, onRefresh);
+    return () => window.removeEventListener(DRAUGHT_SOCIAL_REFRESH_EVENT, onRefresh);
   }, [refreshDashboard]);
 
   const canResume =
@@ -111,7 +137,7 @@ export function HomePage() {
         <div className="flex min-w-0 flex-[1.4] items-center justify-center">
           {!logoFailed ? (
             <img
-              src="/Game-Logo.png"
+              src="../../assets/Game-Logo.png"
               alt="Draught"
               className="h-[60px] max-w-[min(100%,200px)] object-cover"
               onError={() => setLogoFailed(true)}
@@ -122,9 +148,37 @@ export function HomePage() {
             </span>
           )}
         </div>
-        <div className="flex min-h-[40px] min-w-0 flex-1 items-center justify-end">
+        <div className="flex min-h-[40px] min-w-0 flex-1 items-center justify-end gap-2">
           {isAuthenticated ? (
-            <span className="inline-block w-10" aria-hidden />
+            <Link
+              to="/play/friends"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full text-text transition hover:opacity-90"
+              style={{ backgroundColor: "#F5E6A8" }}
+              aria-label="Friends, invites, and notifications"
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-text"
+                aria-hidden
+              >
+                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeLinecap="round" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeLinecap="round" />
+              </svg>
+              {unreadSocial > 0 ? (
+                <span
+                  className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-text"
+                  style={{ backgroundColor: "#E85D4C" }}
+                >
+                  {unreadSocial > 99 ? "99+" : unreadSocial}
+                </span>
+              ) : null}
+            </Link>
           ) : (
             <Link
               to="/auth/register"
@@ -178,6 +232,16 @@ export function HomePage() {
                     variant="default"
                   />
                 }
+              />
+            ) : null}
+            {isAuthenticated && recommended?.opponent ? (
+              <RecommendedMatchHomeRow
+                data={recommended}
+                onPress={() => {
+                  const o = recommended.opponent;
+                  if (!o) return;
+                  navigate(`/play/friends?q=${encodeURIComponent(o.username)}`);
+                }}
               />
             ) : null}
             <HomeRow

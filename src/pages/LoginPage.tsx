@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
 import { safeReturnTo } from "@/lib/deepLink";
+import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -90,11 +91,17 @@ export function LoginPage() {
         <motion.button
           type="button"
           whileTap={{ scale: 0.98 }}
+          disabled={isLoading}
           onClick={() => void handleLogin()}
-          className="w-full rounded-xl py-4 text-base font-bold text-text shadow-md"
+          className="w-full rounded-xl py-4 text-base font-bold text-text shadow-md disabled:opacity-70"
           style={{ backgroundColor: "#EFCA83" }}
         >
-          {isLoading ? "Logging in..." : "Login"}
+          <DraughtLoaderButtonContent
+            loading={isLoading}
+            loadingText="Logging in…"
+            idleText="Login"
+            tone="onLight"
+          />
         </motion.button>
         <p className="mt-6 text-center text-sm text-muted">
           Don&apos;t have an account?{" "}

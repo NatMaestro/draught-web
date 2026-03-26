@@ -5,6 +5,7 @@ import {
   RouterProvider,
   createBrowserRouter,
 } from "react-router-dom";
+import { useSocialWebSocket } from "@/hooks/useSocialWebSocket";
 import { useAuthStore } from "@/store/authStore";
 import { AppShell } from "@/components/layout/AppShell";
 import { SplashPage } from "@/pages/SplashPage";
@@ -16,7 +17,6 @@ import { GetStartedPage } from "@/pages/GetStartedPage";
 import { PuzzlePage } from "@/pages/PuzzlePage";
 import { TrainPage } from "@/pages/TrainPage";
 import { MorePage } from "@/pages/MorePage";
-import { PlaceholderPlayPage } from "@/pages/PlaceholderPlayPage";
 import { PlayMatchmakingPage } from "@/pages/PlayMatchmakingPage";
 import { PlayFriendsPage } from "@/pages/PlayFriendsPage";
 import { GamePlayPage } from "@/pages/GamePlayPage";
@@ -24,10 +24,13 @@ import { PlayLocalPage } from "@/pages/PlayLocalPage";
 import { PlayAIPage } from "@/pages/PlayAIPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { GameReviewPage } from "@/pages/GameReviewPage";
+import { LeaderboardPage } from "@/pages/LeaderboardPage";
+import { TournamentPage } from "@/pages/TournamentPage";
 
 /** Loads JWT from storage. Must wrap routes so hooks run inside the router context. */
 function RootLayout() {
   const loadStoredToken = useAuthStore((s) => s.loadStoredToken);
+  useSocialWebSocket();
   useEffect(() => {
     void loadStoredToken();
   }, [loadStoredToken]);
@@ -47,14 +50,16 @@ const router = createBrowserRouter([
           { path: "puzzle", element: <PuzzlePage /> },
           { path: "train", element: <TrainPage /> },
           { path: "more", element: <MorePage /> },
+          { path: "leaderboard", element: <LeaderboardPage /> },
+          { path: "play/friends", element: <PlayFriendsPage /> },
+          { path: "play/tournament", element: <TournamentPage /> },
         ],
       },
+      { path: "friends", element: <Navigate to="/play/friends" replace /> },
       { path: "play", element: <PlayGamePage /> },
       { path: "play/local", element: <PlayLocalPage /> },
       { path: "play/matchmaking", element: <PlayMatchmakingPage /> },
-      { path: "play/friends", element: <PlayFriendsPage /> },
       { path: "play/ai", element: <PlayAIPage /> },
-      { path: "play/tournament", element: <PlaceholderPlayPage /> },
       { path: "play/game/:gameId", element: <GamePlayPage /> },
       { path: "play/review/:gameId", element: <GameReviewPage /> },
       { path: "auth/login", element: <LoginPage /> },

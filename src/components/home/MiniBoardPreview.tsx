@@ -2,7 +2,7 @@ const SIZE = 10;
 const BOARD_SIZE = 150;
 const TILE_SIZE = BOARD_SIZE / SIZE;
 
-export type MiniBoardVariant = "default" | "puzzle" | "bots" | "lesson";
+export type MiniBoardVariant = "default" | "puzzle" | "bots" | "lesson" | "friend";
 
 type MiniBoardPreviewProps = {
   /** When set, shows a snapshot (e.g. current game) instead of a static pattern. */
@@ -17,6 +17,7 @@ const variantRing: Record<MiniBoardVariant, string> = {
   puzzle: "ring-2 ring-amber-500/40 ring-offset-2 ring-offset-cream",
   bots: "ring-2 ring-blue-500/35 ring-offset-2 ring-offset-cream",
   lesson: "ring-2 ring-emerald-600/35 ring-offset-2 ring-offset-cream",
+  friend: "ring-2 ring-header/40 ring-offset-2 ring-offset-cream",
 };
 
 export function MiniBoardPreview({

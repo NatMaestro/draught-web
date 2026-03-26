@@ -76,15 +76,13 @@ function applyCapture(
   for (const [r, c] of captured) {
     b[r][c] = EMPTY;
   }
-  if (cell === P1_PIECE && r1 === 0) b[r1][c1] = P1_KING;
-  else if (cell === P2_PIECE && r1 === BOARD_SIZE - 1) b[r1][c1] = P2_KING;
+  // Crown only after full move ends on promotion row (applyCaptureSequence applies that).
   return b;
 }
 
 /**
  * Replay a full capture chain hop-by-hop (matches Django `apply_move` for multi-jumps).
- * A man may crown mid-sequence and continue as a flying king — a single teleport would
- * leave the wrong piece type on the final square.
+ * Crowning only when the chain's final landing square is on the promotion rank.
  */
 export function applyCaptureSequence(
   board: number[][],
@@ -121,7 +119,13 @@ export function applyCaptureSequence(
     throw new Error("illegal capture chain");
   }
 
-  return recurse(deepCloneBoard(board), from, rest);
+  const bDone = recurse(deepCloneBoard(board), from, rest);
+  const [tr, tc] = to;
+  const out = deepCloneBoard(bDone);
+  const cell = out[tr][tc];
+  if (cell === P1_PIECE && tr === 0) out[tr][tc] = P1_KING;
+  else if (cell === P2_PIECE && tr === BOARD_SIZE - 1) out[tr][tc] = P2_KING;
+  return out;
 }
 
 type MoveEntry = { dest: [number, number]; captured: Array<[number, number]> };

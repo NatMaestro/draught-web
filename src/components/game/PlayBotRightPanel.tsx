@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 import { ALL_BOT_TIERS, type BotDef } from "@/data/aiBots";
 import { BotSelectModal } from "@/components/game/BotSelectModal";
 
@@ -118,10 +119,15 @@ export function PlayBotRightPanel({
             disabled={loading}
             whileTap={{ scale: loading ? 1 : 0.98 }}
             onClick={onPlay}
-            className="w-full rounded-xl py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
+            className="flex w-full items-center justify-center rounded-xl py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
             style={{ backgroundColor: "#16a34a" }}
           >
-            {loading ? "Starting…" : "Play"}
+            <DraughtLoaderButtonContent
+              loading={loading}
+              loadingText="Starting…"
+              idleText="Play"
+              tone="onDark"
+            />
           </motion.button>
           {error ? (
             <p className="text-center text-xs text-red-800" role="alert">
@@ -177,14 +183,19 @@ export function PlayBotRightPanel({
               disabled={loading}
               whileTap={{ scale: loading ? 1 : 0.97 }}
               onClick={onPlay}
-              className="shrink-0 rounded-xl px-5 py-2.5 text-sm font-bold text-white shadow-lg disabled:opacity-50 min-h-[48px] min-w-[88px]"
+              className="flex shrink-0 items-center justify-center rounded-xl px-3 py-2.5 text-sm font-bold text-white shadow-lg disabled:opacity-50 min-h-[48px] min-w-[5.5rem]"
               style={{
                 background:
                   "linear-gradient(145deg, #22c55e 0%, #15803d 55%, #166534 100%)",
                 boxShadow: "0 0 24px -4px rgba(34, 197, 94, 0.45)",
               }}
             >
-              {loading ? "…" : "Play"}
+              <DraughtLoaderButtonContent
+                loading={loading}
+                loadingText="Starting…"
+                idleText="Play"
+                tone="onDark"
+              />
             </motion.button>
           </div>
         </div>

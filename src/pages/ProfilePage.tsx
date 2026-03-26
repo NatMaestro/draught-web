@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { DraughtLoader } from "@/components/ui/DraughtLoader";
 import { motion } from "framer-motion";
 import { gamesApi, usersApi, type GameHistoryItem } from "@/lib/api";
 import { RatingCardsStrip } from "@/components/home/RatingCardsStrip";
@@ -76,11 +77,13 @@ export function ProfilePage() {
           <h1 className="font-display text-2xl text-text">
             {profile?.username ?? "…"}
           </h1>
-          <p className="text-sm text-muted">
-            {profile
-              ? `${profile.games_won} wins · ${Math.max(0, profile.games_played - profile.games_won)} losses · ${profile.games_played} games`
-              : "Loading…"}
-          </p>
+          <div className="text-sm text-muted">
+            {profile ? (
+              `${profile.games_won} wins · ${Math.max(0, profile.games_played - profile.games_won)} losses · ${profile.games_played} games`
+            ) : (
+              <DraughtLoader variant="inline" label="Loading profile" className="justify-start py-0" />
+            )}
+          </div>
         </div>
       </div>
 
