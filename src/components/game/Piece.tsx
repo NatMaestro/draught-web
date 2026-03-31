@@ -16,7 +16,8 @@ export function Piece({ value, className }: PieceProps) {
   const isP1 = v === P1 || v === P1K;
   const isKing = v === P1K || v === P2K;
 
-  const sizeClass = className ?? "h-[78%] w-[78%]";
+  /** Width-based square so men stay circular even if a parent ever mis-sizes a tile. */
+  const sizeClass = className ?? "aspect-square w-[78%] max-h-full max-w-full";
 
   return (
     <div

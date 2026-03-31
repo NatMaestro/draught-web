@@ -260,8 +260,8 @@ export function MorePage() {
           />
           <MoreMenuRow
             to="/play/local"
-            label="Local draughts"
-            description="Same device, two players"
+            label="Pass & play"
+            description="Same device, two humans — no AI here"
             icon={
               <MoreMenuIconWrap className="bg-icon-stone/85">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -274,7 +274,7 @@ export function MorePage() {
           <MoreMenuRow
             to="/play/ai"
             label="vs computer"
-            description="Practice against the engine"
+            description="Server AI or device practice — choose after picking a bot"
             icon={
               <MoreMenuIconWrap className="bg-icon-olive/90">
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

@@ -68,6 +68,8 @@ export type GameOutcomeContext = {
   /** Display name for local P1 / you in AI */
   username: string | null;
   opponentUsername: string | null;
+  /** Match ended without the loser winning any mini-game (e.g. 5–0). */
+  matchIsRaw?: boolean;
 };
 
 /**
@@ -127,24 +129,31 @@ export function getGameOutcomeCopy(ctx: GameOutcomeContext): GameOutcomeCopy {
   if (isOnlinePvp && mySeat != null) {
     const iWon = winnerSeat === mySeat;
     const oppName = ctx.opponentUsername?.trim() || "Opponent";
+    const rawNote = ctx.matchIsRaw
+      ? iWon
+        ? " They never took a mini-game."
+        : " They won every mini-game."
+      : "";
     if (iWon) {
+      const sub = endedByTimeout
+        ? `${oppName} ran out of time.`
+        : endedByResign
+          ? `${oppName} resigned.`
+          : "Victory is yours!";
       return {
         title: "You won!",
-        subtitle: endedByTimeout
-          ? `${oppName} ran out of time.`
-          : endedByResign
-            ? `${oppName} resigned.`
-            : "Victory is yours!",
+        subtitle: sub + rawNote,
         tone: "win",
       };
     }
+    const sub2 = endedByTimeout
+      ? "You ran out of time."
+      : endedByResign
+        ? "You resigned."
+        : `${oppName} took the win.`;
     return {
       title: "You lost",
-      subtitle: endedByTimeout
-        ? "You ran out of time."
-        : endedByResign
-          ? "You resigned."
-          : `${oppName} took the win.`,
+      subtitle: sub2 + rawNote,
       tone: "lose",
     };
   }

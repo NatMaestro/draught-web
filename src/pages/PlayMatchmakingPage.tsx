@@ -25,7 +25,7 @@ function parseMinutes(raw: string | null): number {
 
 export function PlayMatchmakingPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const minutesFromHub = useMemo(
     () => parseMinutes(searchParams.get("minutes")),
     [searchParams],
@@ -34,6 +34,8 @@ export function PlayMatchmakingPage() {
     () => searchParams.get("clock") !== "off",
     [searchParams],
   );
+  /** First-to-N board wins (separate FIFO queue; casual or ranked). */
+  const queueMatchMode = searchParams.get("match") === "1";
   const loginReturnPath = useMemo(() => {
     const q = searchParams.toString();
     return q ? `/play/matchmaking?${q}` : "/play/matchmaking";
@@ -132,6 +134,8 @@ export function PlayMatchmakingPage() {
       const { data } = await matchmakingApi.join(ranked, {
         timeControlSec: useClockFromHub ? minutesFromHub * 60 : 600,
         useClock: useClockFromHub,
+        isMatch: queueMatchMode,
+        matchTargetWins: 5,
       });
       if (data.status === "matched" && data.game_id) {
         goToGame(data.game_id);
@@ -192,6 +196,7 @@ export function PlayMatchmakingPage() {
     minutesFromHub,
     useClockFromHub,
     handleSearchTimeout,
+    queueMatchMode,
   ]);
 
   const cancelSearch = useCallback(async () => {
@@ -289,10 +294,12 @@ export function PlayMatchmakingPage() {
             <>
               <p className="font-semibold text-text">Ranked</p>
               <p className="mt-1.5 text-muted">
-                Your rating (ELO) changes when the game ends — wins, losses, and
-                draws all count. We look for opponents near your rating first;
-                if nobody is available, the allowed rating gap widens the longer
-                you wait (similar to Chess.com).
+                Your rating (ELO) changes when the contest ends. In a normal
+                ranked game that&apos;s one board; with <strong className="text-text">Match mode</strong>{" "}
+                below it&apos;s first to 5 board wins and your Elo moves{" "}
+                <strong className="text-text">once</strong> when the match is
+                decided (same K-factor as one ranked game). We match you with
+                similar ratings first, then widen the gap the longer you wait.
               </p>
             </>
           ) : (
@@ -306,10 +313,37 @@ export function PlayMatchmakingPage() {
           )}
         </div>
 
+        <label className="mt-3 flex cursor-pointer items-center gap-2.5 rounded-xl border border-header/20 bg-sheet/60 px-3 py-2.5 text-sm text-text">
+          <input
+            type="checkbox"
+            checked={queueMatchMode}
+            onChange={(e) => {
+              const next = new URLSearchParams(searchParams);
+              if (e.target.checked) {
+                next.set("match", "1");
+              } else {
+                next.delete("match");
+              }
+              setSearchParams(next, { replace: true });
+            }}
+            disabled={phase === "searching"}
+            className="size-4 shrink-0 rounded border-header/40 text-active focus:ring-active disabled:opacity-50"
+          />
+          <span>
+            <strong className="font-semibold">Match mode</strong>
+            <span className="text-muted">
+              {" "}
+              — first to 5 board wins (you only pair with others also in match
+              queue)
+            </span>
+          </span>
+        </label>
+
         <div className="mt-8">
           {phase === "searching" ? (
             <MatchmakingSearchExperience
               ranked={ranked}
+              queueMatchMode={queueMatchMode}
               userRating={rating}
               onCancel={() => void cancelSearch()}
             />

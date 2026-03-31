@@ -26,8 +26,8 @@ export function PuzzlePage() {
         />
         <MoreHubLinkRow
           to="/play/local"
-          title="Local draughts"
-          description="Set up positions with a friend on one device and test ideas."
+          title="Pass & play"
+          description="Two players on one device — match play, no server."
           icon={
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
               <rect x="2" y="7" width="20" height="14" rx="2" />

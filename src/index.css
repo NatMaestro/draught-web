@@ -135,4 +135,9 @@
   .pb-clear-mobile-game-hud {
     padding-bottom: max(7.5rem, calc(env(safe-area-inset-bottom, 0px) + 7rem));
   }
+
+  /** Offline board column: tuck player strip closer to the fixed dock; still clears HUD + home indicator */
+  .pb-clear-mobile-game-hud-offline {
+    padding-bottom: max(6rem, calc(env(safe-area-inset-bottom, 0px) + 5.5rem));
+  }
 }

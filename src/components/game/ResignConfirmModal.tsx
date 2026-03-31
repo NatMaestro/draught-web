@@ -8,6 +8,13 @@ type ResignConfirmModalProps = {
   onConfirm: () => void;
   /** Adjust copy for vs AI vs human opponent. */
   isAiGame?: boolean;
+  /**
+   * Offline (or similar) first-to-N match: offer a second action to forfeit the whole match
+   * instead of only the current board. Omit or false when every game is the full match (e.g. target 1).
+   */
+  matchMode?: boolean;
+  /** When `matchMode`, called for “resign entire match” (forfeit series). */
+  onConfirmForfeitMatch?: () => void;
 };
 
 /**
@@ -18,8 +25,12 @@ export function ResignConfirmModal({
   onCancel,
   onConfirm,
   isAiGame = false,
+  matchMode = false,
+  onConfirmForfeitMatch,
 }: ResignConfirmModalProps) {
   const titleId = useId();
+  const showMatchForfeit =
+    matchMode && typeof onConfirmForfeitMatch === "function";
 
   useEffect(() => {
     if (!open) return;
@@ -62,14 +73,37 @@ export function ResignConfirmModal({
               id={titleId}
               className="text-lg font-bold text-text"
             >
-              Resign this game?
+              {showMatchForfeit ? "Resign?" : "Resign this game?"}
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted">
-              {isAiGame
-                ? "You will lose the game immediately. This cannot be undone."
-                : "You will lose the game immediately. Your opponent wins."}
+              {showMatchForfeit ? (
+                <>
+                  <span className="font-semibold text-text">
+                    This board only:
+                  </span>{" "}
+                  the other side wins the current game. The match continues if
+                  nobody has reached the target score yet.
+                  <span className="mt-3 block">
+                    <span className="font-semibold text-text">
+                      Entire match:
+                    </span>{" "}
+                    you forfeit the series; the other side wins the match now.
+                    This cannot be undone.
+                  </span>
+                </>
+              ) : isAiGame ? (
+                "You will lose the game immediately. This cannot be undone."
+              ) : (
+                "You will lose the game immediately. Your opponent wins."
+              )}
             </p>
-            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <div
+              className={
+                showMatchForfeit
+                  ? "mt-6 flex flex-col gap-2"
+                  : "mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"
+              }
+            >
               <button
                 type="button"
                 onClick={onCancel}
@@ -77,13 +111,34 @@ export function ResignConfirmModal({
               >
                 Cancel
               </button>
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
-              >
-                Resign
-              </button>
+              {showMatchForfeit ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={onConfirm}
+                    className="rounded-xl border border-red-800/50 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-900 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-100 dark:hover:bg-red-950/60"
+                  >
+                    Resign this board only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onConfirmForfeitMatch();
+                    }}
+                    className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
+                  >
+                    Resign entire match
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  className="rounded-xl bg-red-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 sm:ml-0"
+                >
+                  Resign
+                </button>
+              )}
             </div>
             </motion.div>
           </div>

@@ -45,9 +45,69 @@ import {
   loadResumeSnapshot,
   saveResumeSnapshot,
 } from "@/lib/resumeGameStorage";
+import { pickBotBanter } from "@/lib/botBanter";
 
 /** Set `VITE_USE_GAME_WS=false` to force REST-only moves. */
 const USE_GAME_WS = import.meta.env.VITE_USE_GAME_WS !== "false";
+
+type MatchUiState = {
+  active: boolean;
+  p1Wins: number;
+  p2Wins: number;
+  targetWins: number;
+  status: string;
+  isRaw: boolean;
+  finished: boolean;
+  winnerSeat: 1 | 2 | null;
+};
+
+function matchFromNested(m: unknown): MatchUiState | null {
+  if (!m || typeof m !== "object" || Array.isArray(m)) return null;
+  const o = m as Record<string, unknown>;
+  const p1 = Number(o.p1_wins);
+  const p2 = Number(o.p2_wins);
+  const tw = Number(o.target_wins ?? 5);
+  const st = String(o.status ?? "active");
+  if (!Number.isFinite(p1) || !Number.isFinite(p2) || !Number.isFinite(tw)) {
+    return null;
+  }
+  const finished = st === "finished";
+  return {
+    active: !finished,
+    p1Wins: Math.max(0, Math.floor(p1)),
+    p2Wins: Math.max(0, Math.floor(p2)),
+    targetWins: Math.max(1, Math.floor(tw)),
+    status: st,
+    isRaw: Boolean(o.is_raw),
+    finished,
+    winnerSeat: null,
+  };
+}
+
+function matchFromFlatWs(o: Record<string, unknown>): MatchUiState | null {
+  if (o.match_mode !== true) return null;
+  const p1 = Number(o.match_p1_wins);
+  const p2 = Number(o.match_p2_wins);
+  const tw = Number(o.match_target_wins ?? 5);
+  const st = String(o.match_status ?? "active");
+  if (!Number.isFinite(p1) || !Number.isFinite(p2)) return null;
+  const finished = Boolean(o.match_finished) || st === "finished";
+  const wss = o.match_winner_seat;
+  return {
+    active: !finished,
+    p1Wins: Math.max(0, Math.floor(p1)),
+    p2Wins: Math.max(0, Math.floor(p2)),
+    targetWins: Number.isFinite(tw) ? Math.max(1, Math.floor(tw)) : 5,
+    status: st,
+    isRaw: Boolean(o.match_is_raw),
+    finished,
+    winnerSeat: wss === 1 || wss === 2 ? wss : null,
+  };
+}
+
+function matchFromGameDetail(data: GameDetail): MatchUiState | null {
+  return matchFromNested(data.match ?? null);
+}
 
 function parsePlayerRef(raw: unknown): GamePlayerPublic | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
@@ -276,6 +336,8 @@ export function useGamePlay(
   const [isAiGame, setIsAiGame] = useState(false);
   /** Server `ai_difficulty` (engine key) — for UI labels when bot roster id is unknown. */
   const [aiDifficulty, setAiDifficulty] = useState<string | undefined>(undefined);
+  /** Vs-AI: short line shown beside bot avatar after the human plays (no loading copy). */
+  const [aiBotSpeech, setAiBotSpeech] = useState<string | null>(null);
   const [isRanked, setIsRanked] = useState(false);
   const [isLocal2p, setIsLocal2p] = useState(false);
   /** Online PvP seat labels / board orientation (from GET /games/:id/). */
@@ -307,11 +369,15 @@ export function useGamePlay(
     setEndedByResign(false);
     setEndedByTimeout(false);
     setUseClock(true);
+    setMatchState(null);
+    setAiBotSpeech(null);
+    appliedOptimisticAiBanterRef.current = false;
   }, [gameId]);
   useEffect(() => {
     lastAppliedMoveCountRef.current = 0;
   }, [gameId]);
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
+  const [matchState, setMatchState] = useState<MatchUiState | null>(null);
   const [hintMessage, setHintMessage] = useState<string | null>(null);
   /** Highlight destination square for Hint (row, col). */
   const [hintDestination, setHintDestination] = useState<
@@ -368,6 +434,8 @@ export function useGamePlay(
    * (e.g. reconnect `join_game`) that would overwrite `current_turn` after a `move_update`.
    */
   const lastAppliedMoveCountRef = useRef(0);
+  /** Vs-AI: banter already shown optimistically — skip second pick on WS/REST ack. */
+  const appliedOptimisticAiBanterRef = useRef(false);
 
   const rollbackOptimistic = useCallback(() => {
     captureAnimTokenRef.current += 1;
@@ -380,6 +448,8 @@ export function useGamePlay(
     optimisticSnapshotRef.current = null;
     skipNextMoveSoundRef.current = false;
     lastMoveRef.current = null;
+    appliedOptimisticAiBanterRef.current = false;
+    setAiBotSpeech(null);
   }, []);
 
   const recordRotationLatencyFromMoveStart = useCallback(() => {
@@ -474,6 +544,7 @@ export function useGamePlay(
     setCanUndo(Boolean(data.can_undo));
     setHintDestination(null);
     setHintMessage(null);
+    setAiBotSpeech(null);
     setLastBotMoveTo(computeOpponentLastMoveHighlight(data, moves, userId, username));
 
     const gid = String(data.id);
@@ -499,6 +570,7 @@ export function useGamePlay(
     setServerClock(clkHydrate);
     const plyCount = Array.isArray(data.moves) ? data.moves.length : 0;
     lastAppliedMoveCountRef.current = plyCount;
+    setMatchState(matchFromGameDetail(data));
   }, [isAuthenticated, userId, username]);
 
   /** Source of truth after any move: GET matches Django DB (board + turn). */
@@ -536,6 +608,7 @@ export function useGamePlay(
       setServerClock(clkSync);
       const plyCount = Array.isArray(data.moves) ? data.moves.length : 0;
       lastAppliedMoveCountRef.current = plyCount;
+      setMatchState(matchFromGameDetail(data));
       return data;
     } catch (e: unknown) {
       logDevError(
@@ -572,6 +645,43 @@ export function useGamePlay(
         ? username.trim()
         : "Guest",
     [isAuthenticated, username],
+  );
+
+  const queueAiBanterAfterHumanMove = useCallback(
+    (normalized: MoveResponse) => {
+      if (!isAiGame) return;
+      if (normalized.winner != null || normalized.status !== "active") return;
+      if (normalized.current_turn !== 2) return;
+      if (appliedOptimisticAiBanterRef.current) {
+        appliedOptimisticAiBanterRef.current = false;
+        return;
+      }
+      const mc = normalized.move_count ?? 1;
+      setAiBotSpeech(
+        pickBotBanter({
+          captureCount: normalized.captured.length,
+          moveCountAfterHuman: mc,
+          engineKey: aiDifficulty ?? "medium",
+        }),
+      );
+    },
+    [isAiGame, aiDifficulty],
+  );
+
+  /** Fire as soon as the human’s move is applied locally (before server / bot). */
+  const applyOptimisticAiBanterForHumanMove = useCallback(
+    (captureCount: number, moveCountAfterHuman: number) => {
+      if (!isAiGame || status !== "active") return;
+      setAiBotSpeech(
+        pickBotBanter({
+          captureCount,
+          moveCountAfterHuman,
+          engineKey: aiDifficulty ?? "medium",
+        }),
+      );
+      appliedOptimisticAiBanterRef.current = true;
+    },
+    [isAiGame, status, aiDifficulty],
   );
 
   const { wsReady, sendMove, sendChat, sendChatTyping, sendResign } =
@@ -638,28 +748,59 @@ export function useGamePlay(
         recordRotationLatencyFromMoveStart();
       }
       applyMovePayload(normalized, setters);
+      const rawMove = payload as Record<string, unknown>;
+      const flatMatch = matchFromFlatWs(rawMove);
+      if (flatMatch) {
+        setMatchState(flatMatch);
+      }
+      const miniEnded = rawMove.mini_game_ended === true;
+      const matchFinished = rawMove.match_finished === true;
+      const resetMini =
+        miniEnded &&
+        !matchFinished &&
+        String(normalized.status ?? "") === "active";
       if (normalized.move_count != null) {
         lastAppliedMoveCountRef.current = normalized.move_count;
       }
       setSelectedPiece(null);
       setPossibleMoves([]);
-      if (wasOurPending && lastMoveRef.current) {
+      if (wasOurPending && lastMoveRef.current && !resetMini) {
         const recorded = lastMoveRef.current;
         lastMoveRef.current = null;
         setMoveHistory((h) => [...h, recorded]);
       }
+      if (resetMini) {
+        setMoveHistory([]);
+        setP1CapturedPieces([]);
+        setP2CapturedPieces([]);
+        lastMoveRef.current = null;
+        setAiBotSpeech(null);
+      }
       if (!skipMoveSound) playMoveSound(soundEnabled);
-      if (normalized.winner != null) {
+      const playEndSound =
+        (normalized.winner != null &&
+          String(normalized.status ?? "") === "finished") ||
+        matchFinished;
+      if (playEndSound) {
         playGameOverSound(soundEnabled);
         setBusy(false);
-      } else if (
-        isAiGame &&
-        normalized.current_turn === 2 &&
-        normalized.status === "active"
-      ) {
-        setBusy(true);
+        setAiBotSpeech(null);
       } else {
         setBusy(false);
+        if (
+          normalized.winner != null ||
+          String(normalized.status ?? "") !== "active" ||
+          matchFinished
+        ) {
+          setAiBotSpeech(null);
+        } else if (
+          isAiGame &&
+          mover === 1 &&
+          normalized.current_turn === 2
+        ) {
+          /* Replace banter only when the human’s move is confirmed — keep showing through bot reply. */
+          queueAiBanterAfterHumanMove(normalized);
+        }
       }
       pendingWsMoveRef.current = false;
       const rawPl = payload as { use_clock?: boolean };
@@ -727,18 +868,27 @@ export function useGamePlay(
       }
       const clk = parseClockSnapshot(p as unknown);
       setServerClock(clk);
+      const rawGs = p as Record<string, unknown>;
+      const mNested = matchFromNested(rawGs.match);
+      if (mNested) setMatchState(mNested);
     },
     onGameOver: (p) => {
       if (p.reason === "resign") {
         setEndedByResign(true);
         setEndedByTimeout(false);
-        setStatus("finished");
-        if (typeof p.winner === "number") setWinner(p.winner);
-        else setWinner(null);
-        playGameOverSound(soundEnabled);
-        setBusy(false);
       }
-      void syncBoardAndTurnFromServer();
+      const rawGo = p as Record<string, unknown>;
+      const fmGo = matchFromFlatWs(rawGo);
+      if (fmGo) setMatchState(fmGo);
+      void syncBoardAndTurnFromServer().then((data) => {
+        if (
+          data &&
+          (data.status === "finished" || data.status === "abandoned")
+        ) {
+          playGameOverSound(soundEnabled);
+        }
+        setBusy(false);
+      });
     },
     onChatMessage: (msg) => {
       if (peerTypingTimeoutRef.current != null) {
@@ -841,7 +991,6 @@ export function useGamePlay(
       if (g.status !== "active") return;
       if (g.current_turn !== 2) return;
 
-      setBusy(true);
       setMoveError(null);
       try {
         const { data } = await gamesApi.aiMove(gameId);
@@ -923,8 +1072,6 @@ export function useGamePlay(
         setMoveError(
           err.response?.data?.detail ?? "AI move failed. Try again.",
         );
-      } finally {
-        setBusy(false);
       }
     },
     [
@@ -941,13 +1088,12 @@ export function useGamePlay(
   const flipBoard = useMemo(() => {
     if (isAiGame) return false;
     if (isLocal2p) {
-      if (!rotateBoardForTurn) return false;
-      return confirmedTurnForFlip === 2;
+      return false;
     }
     // Online PvP: each player sees their own pieces at the bottom.
     if (mySeat === 2) return true;
     return false;
-  }, [isAiGame, isLocal2p, rotateBoardForTurn, confirmedTurnForFlip, mySeat]);
+  }, [isAiGame, isLocal2p, mySeat]);
 
   /** Only the side whose turn it is may move — online: your seat only; AI: human (P1) on their turn. */
   const canInteract = useMemo(() => {
@@ -1070,6 +1216,10 @@ export function useGamePlay(
 
           setCurrentTurn(nextTurnAfter(mover));
           moveTimingStartRef.current = performance.now();
+          applyOptimisticAiBanterForHumanMove(
+            chosen.captured.length,
+            moveHistory.length + 1,
+          );
 
           if (USE_GAME_WS && wsReady) {
             skipNextMoveSoundRef.current = true;
@@ -1127,9 +1277,14 @@ export function useGamePlay(
             const snapshot = await syncBoardAndTurnFromServer();
             setSelectedPiece(null);
             setPossibleMoves([]);
-            if (normalized?.winner != null) {
+            if (
+              normalized?.winner != null ||
+              rawRec?.match_finished === true
+            ) {
               playGameOverSound(soundEnabled);
             } else {
+              setBusy(false);
+              if (normalized) queueAiBanterAfterHumanMove(normalized);
               await maybeAi(snapshot);
             }
           } catch (e: unknown) {
@@ -1162,6 +1317,10 @@ export function useGamePlay(
       setPossibleMoves([]);
       playMoveSound(soundEnabled);
       moveTimingStartRef.current = performance.now();
+      applyOptimisticAiBanterForHumanMove(
+        chosen.captured.length,
+        moveHistory.length + 1,
+      );
 
       if (USE_GAME_WS && wsReady) {
         skipNextMoveSoundRef.current = true;
@@ -1223,9 +1382,14 @@ export function useGamePlay(
         const snapshot = await syncBoardAndTurnFromServer();
         setSelectedPiece(null);
         setPossibleMoves([]);
-        if (normalized?.winner != null) {
+        if (
+          normalized?.winner != null ||
+          rawRec2?.match_finished === true
+        ) {
           playGameOverSound(soundEnabled);
         } else {
+          setBusy(false);
+          if (normalized) queueAiBanterAfterHumanMove(normalized);
           await maybeAi(snapshot);
         }
       } catch (e: unknown) {
@@ -1262,6 +1426,9 @@ export function useGamePlay(
       rollbackOptimistic,
       recordRotationLatencyFromMoveStart,
       canInteract,
+      queueAiBanterAfterHumanMove,
+      applyOptimisticAiBanterForHumanMove,
+      moveHistory,
     ],
   );
 
@@ -1284,7 +1451,6 @@ export function useGamePlay(
           data.current_turn === 2 &&
           data.status === "active"
         ) {
-          setBusy(true);
           try {
             const { data: aiData } = await gamesApi.aiMove(gameId);
             if (cancelled) return;
@@ -1333,8 +1499,6 @@ export function useGamePlay(
                 err.response?.data?.detail ?? "AI move failed after load.",
               );
             }
-          } finally {
-            if (!cancelled) setBusy(false);
           }
         }
       } catch {
@@ -1656,6 +1820,7 @@ export function useGamePlay(
       setHintMessage(null);
       setSelectedPiece(null);
       setPossibleMoves([]);
+      setAiBotSpeech(null);
       playMoveSound(soundEnabled);
       const clkUndo = parseClockSnapshot(u);
       if (clkUndo) setServerClock(clkUndo);
@@ -1680,6 +1845,11 @@ export function useGamePlay(
     isLocal2p,
     mySeat,
   ]);
+
+  const matchSummary = useMemo(() => {
+    if (!matchState) return null;
+    return `Match ${matchState.p1Wins}–${matchState.p2Wins} · First to ${matchState.targetWins}`;
+  }, [matchState]);
 
   const downloadGameRecord = useCallback(() => {
     if (!gameId) return;
@@ -1722,6 +1892,7 @@ export function useGamePlay(
     selectedPiece,
     possibleMoves,
     busy,
+    aiBotSpeech,
     moveError,
     flipBoard,
     /** Duration (ms) for the next 180° spin — tied to last move API/WS latency. */
@@ -1758,5 +1929,7 @@ export function useGamePlay(
      * switches only after the API/WebSocket resolves.
      */
     confirmedTurnForFlip,
+    matchSummary,
+    matchIsRaw: Boolean(matchState?.isRaw && matchState?.finished),
   };
 }

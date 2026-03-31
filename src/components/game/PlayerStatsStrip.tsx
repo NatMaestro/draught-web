@@ -1,10 +1,19 @@
 import { countMaterial, type PlayerId } from "@/lib/boardUtils";
 import { CapturedPiecesRow } from "@/components/game/CapturedPiecesRow";
+import { AiBotBanterStrip } from "@/components/game/AiBotBanterStrip";
 import {
   avatarBackgroundStyle,
   initialsFromUsername,
 } from "@/lib/playerAvatar";
 import { formatClock } from "@/hooks/useGameClock";
+
+/** Bot speech block when `variant` is `top` in vs-AI. */
+export type PlayerStatsAiBanter = {
+  message: string;
+  botName: string;
+  rosterEmoji: string;
+  avatarSeed: string;
+};
 
 export type PlayerStatsStripProps = {
   board: number[][];
@@ -22,6 +31,11 @@ export type PlayerStatsStripProps = {
   variant: "top" | "bottom";
   /** Visual theme: legacy cream page vs dark dock layout */
   theme?: "cream" | "dock";
+  /**
+   * When `variant === "top"` and this is set, bot banter renders inline after the avatar
+   * and label (same row); it may overlap the timer / captured column.
+   */
+  aiBanter?: PlayerStatsAiBanter | null;
 };
 
 export function PlayerStatsStrip({
@@ -35,6 +49,7 @@ export function PlayerStatsStrip({
   isActiveTurn,
   variant,
   theme = "cream",
+  aiBanter,
 }: PlayerStatsStripProps) {
   const m = countMaterial(board, player);
 
@@ -46,6 +61,12 @@ export function PlayerStatsStrip({
     : isActiveTurn
       ? "ring-1 ring-offset-1 ring-active/80 ring-offset-cream bg-active/20 sm:ring-2 sm:ring-offset-2"
       : "border-header/25 bg-sheet/80";
+
+  const showBanter =
+    variant === "top" &&
+    aiBanter != null &&
+    typeof aiBanter.message === "string" &&
+    aiBanter.message.length > 0;
 
   return (
     <div
@@ -63,7 +84,12 @@ export function PlayerStatsStrip({
       ].join(" ")}
     >
       <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 sm:gap-x-3 sm:gap-y-2">
-        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
+        <div
+          className={[
+            "flex min-w-0 gap-1.5 sm:gap-2",
+            showBanter ? "relative z-20 flex-1 items-center pr-1 sm:pr-2" : "items-center",
+          ].join(" ")}
+        >
           <div
             className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold sm:h-9 sm:w-9 sm:text-[11px] ${
               avatarUsername
@@ -77,7 +103,7 @@ export function PlayerStatsStrip({
           >
             {avatarUsername ? initialsFromUsername(avatarUsername) : player}
           </div>
-          <div className="min-w-0 leading-tight">
+          <div className="min-w-0 shrink-0 leading-tight">
             <p
               className={`truncate text-[11px] font-bold sm:text-sm ${isDock ? "text-amber-50" : "text-text"}`}
             >
@@ -94,8 +120,23 @@ export function PlayerStatsStrip({
               </span>
             </p>
           </div>
+          {showBanter ? (
+            <div className="min-w-full flex-1 sm:-mr-6 md:-mr-10">
+              <AiBotBanterStrip
+                message={aiBanter.message}
+                botName={aiBanter.botName}
+                rosterEmoji={aiBanter.rosterEmoji}
+                avatarSeed={aiBanter.avatarSeed}
+              />
+            </div>
+          ) : null}
         </div>
-        <div className="flex min-w-0 flex-col items-end gap-0 sm:flex-row sm:items-center sm:gap-3">
+        <div
+          className={[
+            "flex min-w-0 flex-col items-end gap-0 sm:flex-row sm:items-center sm:gap-3",
+            showBanter ? "relative z-10" : "",
+          ].join(" ")}
+        >
           {timerSeconds != null ? (
             <div
               className={`flex flex-row items-baseline gap-1 tabular-nums sm:flex-col sm:items-end sm:gap-0 ${

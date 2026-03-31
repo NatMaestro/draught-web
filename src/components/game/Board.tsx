@@ -41,6 +41,11 @@ export type BoardProps = {
   canInteract?: boolean;
   /** 180° rotation duration (ms); from measured API/WebSocket latency in local 2P. */
   rotationDurationMs?: number;
+  /**
+   * When true, the board may shrink inside a flex column (offline / tight layouts).
+   * Default keeps `shrink-0` so online layouts don’t compress unexpectedly.
+   */
+  fitInFlexColumn?: boolean;
 };
 
 /**
@@ -114,6 +119,7 @@ export function Board({
   disabled,
   canInteract = true,
   rotationDurationMs = DEFAULT_BOARD_ROTATION_MS,
+  fitInFlexColumn = false,
 }: BoardProps) {
   const rotationMs = Math.min(
     BOARD_ROTATION_MS_MAX,
@@ -391,12 +397,23 @@ export function Board({
         )
       : null;
 
+  const rootShrink = fitInFlexColumn
+    ? "min-h-0 max-h-full shrink"
+    : "shrink-0";
+
   return (
     <div
-      className="mx-auto aspect-square h-auto w-full min-h-0 min-w-[12rem] max-h-full max-w-[min(100%,92vw,680px)] shrink-0 select-none touch-manipulation"
-      role="grid"
-      aria-label="Draught board — tap or drag pieces"
+      className={`mx-auto flex w-full min-w-[12rem] max-w-[min(100%,92vw,680px)] flex-col items-center select-none touch-manipulation ${rootShrink}`}
     >
+      {/*
+        Keep caption *outside* the aspect-square box so the grid gets the full square.
+        Otherwise the hint eats height and tiles become wider than tall (pieces look off-center).
+      */}
+      <div
+        className="relative mx-auto aspect-square min-h-0 w-full min-w-0 max-h-full max-w-full"
+        role="grid"
+        aria-label="Draught board — tap or drag pieces"
+      >
       <motion.div
         className="h-full w-full will-change-transform"
         style={{ transformOrigin: "center center" }}
@@ -409,7 +426,10 @@ export function Board({
         <div
           ref={gridRef}
           className="grid h-full w-full gap-0 overflow-hidden rounded-xl border-2 border-header/40 shadow-lift"
-          style={{ gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))` }}
+          style={{
+            gridTemplateColumns: `repeat(${SIZE}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${SIZE}, minmax(0, 1fr))`,
+          }}
         >
         {Array.from({ length: SIZE * SIZE }).map((_, i) => {
           const dr = Math.floor(i / SIZE);
@@ -439,7 +459,7 @@ export function Board({
               aria-disabled={interactionDisabled}
               aria-label={`Square row ${lr + 1} column ${lc + 1}`}
               className={[
-                "relative flex aspect-square min-h-0 min-w-0 items-center justify-center p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-header focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
+                "relative flex min-h-0 min-w-0 items-center justify-center p-0.5 outline-none focus-visible:ring-2 focus-visible:ring-header focus-visible:ring-offset-2 focus-visible:ring-offset-cream",
                 playable ? "bg-darkTile" : "bg-lightTile",
                 hi === "selected"
                   ? "z-[3] border-2 border-emerald-400 bg-emerald-500/45 shadow-[inset_0_0_20px_rgba(16,185,129,0.55),0_0_0_2px_rgba(52,211,153,0.9)]"
@@ -454,7 +474,7 @@ export function Board({
                   ? "z-[2] border-2 border-amber-300 bg-amber-400/50 shadow-[0_0_0_2px_rgba(251,191,36,0.65),inset_0_0_18px_rgba(254,249,195,0.45)]"
                   : "",
                 interactionDisabled
-                  ? "cursor-not-allowed opacity-90"
+                  ? "cursor-not-allowed"
                   : "cursor-pointer active:brightness-95",
               ].join(" ")}
               onKeyDown={(ke) => {
@@ -494,7 +514,7 @@ export function Board({
                   className="pointer-events-none absolute inset-0 flex items-center justify-center"
                   aria-hidden
                 >
-                  <span className="h-[42%] w-[42%] rounded-full border-[3px] border-amber-100 bg-amber-400/95 shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
+                  <span className="aspect-square w-[42%] max-h-full rounded-full border-[3px] border-amber-100 bg-amber-400/95 shadow-[0_0_12px_rgba(251,191,36,0.9)]" />
                 </span>
               ) : null}
               {hi === "hint" && cell === 0 ? (
@@ -502,7 +522,7 @@ export function Board({
                   className="pointer-events-none absolute inset-0 flex items-center justify-center"
                   aria-hidden
                 >
-                  <span className="h-[42%] w-[42%] rounded-full border-[3px] border-violet-100 bg-violet-500/90 shadow-[0_0_12px_rgba(139,92,246,0.85)]" />
+                  <span className="aspect-square w-[42%] max-h-full rounded-full border-[3px] border-violet-100 bg-violet-500/90 shadow-[0_0_12px_rgba(139,92,246,0.85)]" />
                 </span>
               ) : null}
               {cell !== 0 ? (
@@ -525,9 +545,10 @@ export function Board({
         })}
         </div>
       </motion.div>
+      </div>
       {floatingPiece}
       {onDragMove ? (
-        <p className="mt-1.5 text-center text-[10px] leading-tight text-muted sm:text-xs">
+        <p className="mt-1.5 w-full text-center text-[10px] leading-tight text-muted sm:text-xs">
           {canInteract
             ? "Drag to move, or tap a piece then a square."
             : "Wait for your turn — opponent to move."}

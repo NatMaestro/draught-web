@@ -166,7 +166,11 @@ export function GameReviewPage() {
             onClick={async () => {
               setRematchBusy(true);
               try {
-                await challengesApi.create(opponentId, game.id);
+                await challengesApi.create(opponentId, {
+                  rematch_game_id: game.id,
+                  is_ranked: Boolean(game.is_ranked),
+                  is_match: Boolean(game.match),
+                });
                 navigate("/home");
               } catch {
                 /* toast later */

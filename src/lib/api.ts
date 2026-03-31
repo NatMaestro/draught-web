@@ -208,6 +208,16 @@ export type ServerClockSnapshot = {
 };
 
 /** Move / ai-move response from Django `MoveView` / `AiMoveView`. */
+/** Match (first-to-N mini-games) — nested on GET game or flat on move WS payloads. */
+export type GameMatchSnapshot = {
+  p1_wins: number;
+  p2_wins: number;
+  target_wins: number;
+  status: string;
+  is_raw: boolean;
+  winner_id?: number | null;
+};
+
 export interface MoveResponse {
   board: number[][];
   current_turn: number;
@@ -224,6 +234,16 @@ export interface MoveResponse {
   time_control_sec?: number;
   /** Ply count after this move (matches `moves.length` on GET game). */
   move_count?: number;
+  /** Match play — same keys as WebSocket `move_update` when `match_mode` is true. */
+  match_mode?: boolean;
+  match_p1_wins?: number;
+  match_p2_wins?: number;
+  match_target_wins?: number;
+  match_status?: string;
+  match_finished?: boolean;
+  match_is_raw?: boolean;
+  mini_game_ended?: boolean;
+  match_winner_seat?: number;
 }
 
 /** Single ply — replay may include `captured` squares (from `GET /games/:id/`). */
@@ -263,6 +283,10 @@ export type GameChallenge = {
   from_user: GamePlayerPublic;
   to_user: GamePlayerPublic;
   rematch_game: string | null;
+  /** First-to-five (or configured target) mini-games when accepted. */
+  is_match?: boolean;
+  /** Elo updates when the board or match ends. */
+  is_ranked?: boolean;
   status: string;
   created_at: string;
   /** Set when status is `accepted` — the live match to join. */
@@ -298,6 +322,8 @@ export interface GameDetail {
   time_control_sec?: number;
   /** When false, no clocks or time loss. */
   use_clock?: boolean;
+  /** Present when this game is part of a first-to-N match. */
+  match?: GameMatchSnapshot | null;
 }
 
 /** POST /games/:id/undo/ */
@@ -326,6 +352,9 @@ export type CreateGameOptions = {
   timeControlSec?: number;
   /** When false, server does not enforce clocks or time loss. */
   useClock?: boolean;
+  /** First-to-`matchTargetWins` mini-games (race); can combine with ranked online. */
+  isMatch?: boolean;
+  matchTargetWins?: number;
 };
 
 export const gamesApi = {
@@ -346,6 +375,15 @@ export const gamesApi = {
     }
     if (opts.timeControlSec != null && Number.isFinite(opts.timeControlSec)) {
       body.time_control_sec = Math.round(opts.timeControlSec);
+    }
+    if (opts.isMatch) {
+      body.is_match = true;
+      if (
+        opts.matchTargetWins != null &&
+        Number.isFinite(opts.matchTargetWins)
+      ) {
+        body.match_target_wins = Math.round(opts.matchTargetWins);
+      }
     }
     return api.post<GameDetail>("/games/", body);
   },
@@ -392,10 +430,21 @@ export const challengesApi = {
     api.get<{ count?: number; results: GameChallenge[] }>(
       "/games/challenges/outgoing/",
     ),
-  create: (to_user_id: number, rematch_game_id?: string) =>
+  create: (
+    to_user_id: number,
+    options?: {
+      rematch_game_id?: string;
+      is_match?: boolean;
+      is_ranked?: boolean;
+    },
+  ) =>
     api.post<GameChallenge>("/games/challenges/", {
       to_user_id,
-      ...(rematch_game_id ? { rematch_game_id } : {}),
+      ...(options?.rematch_game_id
+        ? { rematch_game_id: options.rematch_game_id }
+        : {}),
+      ...(options?.is_match ? { is_match: true } : {}),
+      ...(options?.is_ranked ? { is_ranked: true } : {}),
     }),
   accept: (challengeId: string) =>
     api.post<{ game_id: string; game: GameDetail }>(
@@ -411,6 +460,9 @@ export type MatchmakingJoinOptions = {
   ranked?: boolean;
   timeControlSec?: number;
   useClock?: boolean;
+  /** Casual only — first-to-N board wins (server default target 5). */
+  isMatch?: boolean;
+  matchTargetWins?: number;
 };
 
 export const matchmakingApi = {
@@ -424,6 +476,12 @@ export const matchmakingApi = {
           Number.isFinite(opts.timeControlSec) && {
             time_control_sec: Math.round(opts.timeControlSec),
           }),
+        ...(opts?.isMatch ? { is_match: true } : {}),
+        ...(opts?.isMatch &&
+        opts.matchTargetWins != null &&
+        Number.isFinite(opts.matchTargetWins)
+          ? { match_target_wins: Math.round(opts.matchTargetWins) }
+          : {}),
       },
     ),
   cancel: (ranked?: boolean) =>

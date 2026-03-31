@@ -35,6 +35,8 @@ const ELAPSED_TICK_MS = 1000;
 
 type Props = {
   ranked: boolean;
+  /** First-to-N board wins (separate queue; casual or ranked). */
+  queueMatchMode?: boolean;
   /** User’s rating when known (ranked UI); optional for casual. */
   userRating: number | null;
   onCancel: () => void;
@@ -46,6 +48,7 @@ type Props = {
  */
 export function MatchmakingSearchExperience({
   ranked,
+  queueMatchMode = false,
   userRating,
   onCancel,
 }: Props) {
@@ -98,6 +101,12 @@ export function MatchmakingSearchExperience({
           Matchmaking
         </p>
         <p className="mt-0.5 text-sm font-bold text-text">Finding you an opponent</p>
+        {queueMatchMode ? (
+          <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200/90">
+            Match mode — first to 5 board wins
+            {ranked ? " · Elo updates once when the match ends" : ""}
+          </p>
+        ) : null}
         <p className="mt-1 text-xs text-muted">{ring}</p>
       </div>
 

@@ -14,7 +14,8 @@ import { PlayMenuRow } from "@/components/play/PlayMenuRow";
 
 export function PlayGamePage() {
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const matchPlay = searchParams.get("match") === "1";
   const authReturnPath = useMemo(() => {
     const r = searchParams.get("returnTo");
     if (r == null || r === "") return "/play";
@@ -55,8 +56,11 @@ export function PlayGamePage() {
     } else {
       p.set("clock", "off");
     }
+    if (matchPlay) {
+      p.set("match", "1");
+    }
     return p.toString();
-  }, [minutes, useClock]);
+  }, [minutes, useClock, matchPlay]);
 
   useLayoutEffect(() => {
     const el = headerWrapRef.current;
@@ -159,6 +163,31 @@ export function PlayGamePage() {
           </button>
         </div>
 
+        <label className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-header/20 bg-sheet/50 px-3 py-2.5 text-sm text-text">
+          <input
+            type="checkbox"
+            checked={matchPlay}
+            onChange={(e) => {
+              const next = new URLSearchParams(searchParams);
+              if (e.target.checked) {
+                next.set("match", "1");
+              } else {
+                next.delete("match");
+              }
+              setSearchParams(next, { replace: true });
+            }}
+            className="size-4 shrink-0 rounded border-header/40 text-active focus:ring-active"
+          />
+          <span>
+            <strong className="font-semibold">Match mode</strong>
+            <span className="text-muted">
+              {" "}
+              — first to 5 board wins online (ranked: one Elo change when the
+              match ends)
+            </span>
+          </span>
+        </label>
+
         <motion.div whileTap={{ scale: 0.99 }}>
           <Link
             to={`/play/matchmaking?${timeQuery}`}
@@ -181,14 +210,14 @@ export function PlayGamePage() {
             description="Invites, friend list, or linked accounts — challenge people you know."
           />
           <PlayMenuRow
-            to={`/play/local?${timeQuery}`}
-            title="Play in person"
-            description="Same phone or tablet — pass-and-play, two players on one device."
+            to="/play/local"
+            title="Pass & play (offline)"
+            description="Two humans on one device — first to 5 board wins. No server."
           />
           <PlayMenuRow
             to={`/play/ai?${timeQuery}`}
             title="Play with a bot"
-            description="Practice against AI at your pace."
+            description="Server AI or practice on this device — pick a bot, then Online or This device."
           />
           <PlayMenuRow
             to={`/play/tournament?${timeQuery}`}

@@ -85,6 +85,7 @@ export function GamePlayPage() {
     selectedPiece,
     possibleMoves,
     busy,
+    aiBotSpeech,
     moveError,
     flipBoard,
     boardRotationMs,
@@ -109,10 +110,18 @@ export function GamePlayPage() {
     undoLastMove,
     downloadGameRecord,
     confirmedTurnForFlip,
+    matchSummary,
+    matchIsRaw,
   } = useGamePlay(gameId, { chatPanelOpen: chatModalOpen });
 
   const gameOver =
     winner != null || status === "finished" || status === "abandoned";
+
+  /** Vs-AI: never show the generic "Working…" row — persona strip + fast turns; still use `busy` to lock input. */
+  const showWorkingOverlay = useMemo(
+    () => busy && !isAiGame,
+    [busy, isAiGame],
+  );
 
   /** Stable bot roster id from Play vs AI URL or sessionStorage (survives refresh without query). */
   const aiBotId = useMemo(() => {
@@ -144,6 +153,17 @@ export function GamePlayPage() {
     return n ?? labelForAiDifficulty(aiDifficulty);
   }, [isAiGame, aiBotId, aiDifficulty]);
 
+  /** Roster persona for bot banter row (Chess.com–style avatar + bubble). */
+  const aiBotPersona = useMemo(() => {
+    if (!isAiGame) return null;
+    const bot = aiBotId ? findBotById(aiBotId) : undefined;
+    return {
+      name: bot?.name ?? labelForAiDifficulty(aiDifficulty),
+      emoji: bot?.emoji ?? "🤖",
+      seed: aiBotId ?? (aiDifficulty ?? "ai"),
+    };
+  }, [isAiGame, aiBotId, aiDifficulty]);
+
   const opponentUsername = useMemo(() => {
     if (!isOnlinePvp || mySeat == null) return null;
     if (mySeat === 1) return playerTwoProfile?.username ?? null;
@@ -162,6 +182,7 @@ export function GamePlayPage() {
       mySeat,
       username: username ?? null,
       opponentUsername,
+      matchIsRaw,
     });
   }, [
     winner,
@@ -173,6 +194,7 @@ export function GamePlayPage() {
     mySeat,
     username,
     opponentUsername,
+    matchIsRaw,
   ]);
 
   const minutesForClock = useMemo(() => {
@@ -569,11 +591,26 @@ export function GamePlayPage() {
                       isActiveTurn={stripTop.isActiveTurn}
                       variant="top"
                       theme="cream"
+                      aiBanter={
+                        isAiGame && aiBotSpeech && aiBotPersona
+                          ? {
+                              message: aiBotSpeech,
+                              botName: aiBotPersona.name,
+                              rosterEmoji: aiBotPersona.emoji,
+                              avatarSeed: aiBotPersona.seed,
+                            }
+                          : undefined
+                      }
                     />
+                    {matchSummary ? (
+                      <p className="mt-1 text-center text-[11px] font-semibold tracking-wide text-header/90">
+                        {matchSummary}
+                      </p>
+                    ) : null}
                   </div>
 
                   <div className="relative flex min-h-0 w-full min-w-0 flex-1 flex-col items-center justify-center overflow-hidden py-1 sm:py-2">
-                    {busy ? (
+                    {showWorkingOverlay ? (
                       <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 items-center gap-2 text-xs text-muted">
                         <DraughtLoaderSpinner size="sm" ariaLabel="Working" />
                         <span>Working…</span>
@@ -734,7 +771,7 @@ export function GamePlayPage() {
                     className="mt-1 h-5 w-5 shrink-0 accent-header"
                   />
                 </label>
-                {!isAiGame ? (
+                {!isAiGame && !isLocal2p ? (
                   <label className="flex cursor-pointer items-center justify-between gap-3">
                     <span className="text-sm font-medium">
                       Rotate board for current player (local 2P)
@@ -746,11 +783,18 @@ export function GamePlayPage() {
                       className="h-5 w-5 accent-header"
                     />
                   </label>
-                ) : (
+                ) : null}
+                {!isAiGame && isLocal2p ? (
+                  <p className="text-xs text-muted">
+                    In-person games use a fixed board: Player 1 at the bottom,
+                    Player 2 at the top.
+                  </p>
+                ) : null}
+                {isAiGame ? (
                   <p className="text-xs text-muted">
                     You play as Player 1 (bottom). AI is Player 2.
                   </p>
-                )}
+                ) : null}
                 <div className="flex flex-col gap-2 rounded-xl border border-header/20 bg-cream/50 p-3">
                   <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">
                     Link to this game

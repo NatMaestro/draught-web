@@ -69,6 +69,10 @@ export function PlayFriendsPage() {
   const [frOut, setFrOut] = useState<FriendRequestItem[]>([]);
   const [chIn, setChIn] = useState<GameChallenge[]>([]);
   const [chOut, setChOut] = useState<GameChallenge[]>([]);
+  /** When true, new challenges use first-to-5 board wins (match) mode. */
+  const [challengeAsMatch, setChallengeAsMatch] = useState(false);
+  /** When true, created games count for Elo (single board or full match). */
+  const [challengeAsRanked, setChallengeAsRanked] = useState(true);
   const [optimisticOutgoingFriendIds, setOptimisticOutgoingFriendIds] = useState<
     number[]
   >([]);
@@ -228,7 +232,8 @@ export function PlayFriendsPage() {
   }, [frOut, optimisticOutgoingFriendIds]);
 
   const shareOrCopyInvite = useCallback(async () => {
-    const url = `${window.location.origin}/play`;
+    const qs = challengeAsMatch ? "?match=1" : "";
+    const url = `${window.location.origin}/play${qs}`;
     try {
       if (navigator.share) {
         await navigator.share({
@@ -248,7 +253,7 @@ export function PlayFriendsPage() {
     } catch {
       setErr("Could not copy the link.");
     }
-  }, []);
+  }, [challengeAsMatch]);
 
   const onMarkAllRead = async () => {
     try {
@@ -284,7 +289,10 @@ export function PlayFriendsPage() {
   const onChallenge = async (userId: number) => {
     setErr(null);
     try {
-      await challengesApi.create(userId);
+      await challengesApi.create(userId, {
+        ...(challengeAsMatch ? { is_match: true } : {}),
+        ...(challengeAsRanked ? { is_ranked: true } : {}),
+      });
       await load();
     } catch (e: unknown) {
       const detail =
@@ -494,6 +502,35 @@ export function PlayFriendsPage() {
       <FriendsStickyHeader onCopyInvite={() => void shareOrCopyInvite()} />
 
       <div className="mx-auto w-full max-w-lg flex-1 space-y-4 px-4 pb-6 pt-4">
+        <div className="space-y-2 rounded-xl border border-header/15 bg-sheet/40 px-3 py-2.5">
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-text">
+            <input
+              type="checkbox"
+              checked={challengeAsRanked}
+              onChange={(e) => setChallengeAsRanked(e.target.checked)}
+              className="mt-0.5 rounded border-header/40 text-active focus:ring-active"
+            />
+            <span>
+              <strong className="font-semibold">Ranked</strong>
+              <span className="text-muted">
+                {" "}
+                — Elo changes when the board or match ends (uncheck for casual)
+              </span>
+            </span>
+          </label>
+          <label className="flex cursor-pointer items-start gap-2 text-xs text-text">
+            <input
+              type="checkbox"
+              checked={challengeAsMatch}
+              onChange={(e) => setChallengeAsMatch(e.target.checked)}
+              className="mt-0.5 rounded border-header/40 text-active focus:ring-active"
+            />
+            <span>
+              <strong className="font-semibold">Match mode</strong>
+              <span className="text-muted"> — first to 5 board wins</span>
+            </span>
+          </label>
+        </div>
         <p className="text-center text-xs text-muted">
           Browser push:{" "}
           <Link to="/more" className="font-semibold text-text underline-offset-2 hover:underline">
@@ -678,6 +715,16 @@ export function PlayFriendsPage() {
                     >
                       <span>
                         From <strong>{c.from_user.username}</strong>
+                        {c.is_ranked ? (
+                          <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                            · Ranked
+                          </span>
+                        ) : null}
+                        {c.is_match ? (
+                          <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                            · Match
+                          </span>
+                        ) : null}
                       </span>
                       <span className="flex gap-2">
                         <button
@@ -713,6 +760,16 @@ export function PlayFriendsPage() {
                     >
                       <span>
                         To <strong>{c.to_user.username}</strong>
+                        {c.is_ranked ? (
+                          <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-900 dark:text-emerald-200">
+                            · Ranked
+                          </span>
+                        ) : null}
+                        {c.is_match ? (
+                          <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">
+                            · Match
+                          </span>
+                        ) : null}
                         {c.status === "accepted" ? (
                           <span className="ml-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                             · Accepted

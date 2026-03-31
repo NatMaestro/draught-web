@@ -3,15 +3,31 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Board } from "@/components/game/Board";
 import { GamePlayErrorBoundary } from "@/components/game/GamePlayErrorBoundary";
 import { GamePlaySidebar } from "@/components/game/GamePlaySidebar";
-import { PlayBotRightPanel } from "@/components/game/PlayBotRightPanel";
+import {
+  BotEngineModeBar,
+  PlayBotRightPanel,
+  type BotEngineMode,
+} from "@/components/game/PlayBotRightPanel";
 import { PlayerStatsStrip } from "@/components/game/PlayerStatsStrip";
 import {
   RulesHelpModal,
   RulesHeaderIconButton,
 } from "@/components/game/RulesPanel";
-import { ALL_BOT_TIERS, type BotDef } from "@/data/aiBots";
+import { ALL_BOT_TIERS, findBotById, type BotDef } from "@/data/aiBots";
 import { gamesApi } from "@/lib/api";
 import { createInitialBoard } from "@/lib/boardUtils";
+import { normalizeOfflineAiDifficulty } from "@/lib/offlineAi";
+import {
+  DEFAULT_OFFLINE_MATCH_TARGET,
+  type OfflineMatchSetup,
+} from "@/lib/offlineMatchTypes";
+
+const OFFLINE_SETUP_STORAGE_KEY = "draughtOfflineSetup";
+
+function normalizeName(raw: string, fallback: string): string {
+  const t = raw.trim();
+  return t.length > 0 ? t.slice(0, 48) : fallback;
+}
 
 const DEFAULT_BOARD = createInitialBoard();
 
@@ -41,10 +57,49 @@ export function PlayAIPage() {
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [engineMode, setEngineMode] = useState<BotEngineMode>("online");
+  const [offlineYourName, setOfflineYourName] = useState("Player 1");
+  const [offlineComputerLabel, setOfflineComputerLabel] =
+    useState("Computer");
   const [selected, setSelected] = useState<BotDef>(pickDefaultBot);
   const [rulesOpen, setRulesOpen] = useState(false);
 
   const previewBoard = useMemo(() => DEFAULT_BOARD, []);
+
+  const headerSubline = useMemo(() => {
+    if (engineMode === "offline") {
+      return "This device — no server · first to 5 board wins";
+    }
+    if (!useClockFromHub) {
+      return "No clock — casual";
+    }
+    if (minutesFromHub != null) {
+      return `Clock from menu: ${minutesFromHub} min`;
+    }
+    return "Pick an opponent below";
+  }, [engineMode, minutesFromHub, useClockFromHub]);
+
+  const playIdleLabel =
+    engineMode === "offline" ? "Start offline match" : "Play";
+
+  const startOfflineMatch = () => {
+    const bot = findBotById(selected.id);
+    if (!bot) return;
+    const setup: OfflineMatchSetup = {
+      p1Name: normalizeName(offlineYourName, "Player 1"),
+      p2Name: normalizeName(offlineComputerLabel, "Computer"),
+      aiMode: true,
+      aiDifficulty: normalizeOfflineAiDifficulty(bot.engineKey),
+      offlineBotId: selected.id,
+      matchTargetWins: DEFAULT_OFFLINE_MATCH_TARGET,
+    };
+    try {
+      sessionStorage.setItem(OFFLINE_SETUP_STORAGE_KEY, JSON.stringify(setup));
+    } catch {
+      /* private / quota */
+    }
+    navigate("/play/offline", { state: setup });
+  };
 
   const start = async () => {
     setLoading(true);
@@ -74,6 +129,14 @@ export function PlayAIPage() {
     }
   };
 
+  const handlePlay = () => {
+    if (engineMode === "offline") {
+      startOfflineMatch();
+      return;
+    }
+    void start();
+  };
+
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-cream bg-mesh-radial text-text dark:bg-mesh-radial-dark">
       {/* Mobile: slim glass header — nav duplicated in sidebar on md+ */}
@@ -89,11 +152,7 @@ export function PlayAIPage() {
             Play vs AI
           </p>
           <p className="truncate text-[11px] text-muted dark:text-cyan-200/70">
-            {!useClockFromHub
-              ? "No clock — casual"
-              : minutesFromHub != null
-                ? `Clock from menu: ${minutesFromHub} min`
-                : "Pick an opponent below"}
+            {headerSubline}
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -144,7 +203,7 @@ export function PlayAIPage() {
                     />
                   </div>
 
-                  <div className="mt-auto shrink-0 pt-0.5 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+                  <div className="mt-auto shrink-0 pt-0.5">
                     <PlayerStatsStrip
                       board={previewBoard}
                       player={1}
@@ -155,16 +214,36 @@ export function PlayAIPage() {
                       theme="cream"
                     />
                   </div>
+
+                  <BotEngineModeBar
+                    show
+                    engineMode={engineMode}
+                    onEngineModeChange={setEngineMode}
+                    loading={loading}
+                    offlineYourName={offlineYourName}
+                    offlineComputerLabel={offlineComputerLabel}
+                    onOfflineYourNameChange={setOfflineYourName}
+                    onOfflineComputerLabelChange={setOfflineComputerLabel}
+                    wrapperClassName="md:hidden mt-2 shrink-0 rounded-xl border border-header/25 bg-sheet/85 px-3 py-3 shadow-sm dark:border-white/10 dark:bg-cream/50"
+                    intro="Choose a bot with Change below, then Online (server) or This device (offline match in-browser)."
+                  />
                 </div>
               </div>
 
               <PlayBotRightPanel
                 selected={selected}
                 onSelect={setSelected}
-                onPlay={() => void start()}
+                onPlay={handlePlay}
                 loading={loading}
-                error={error}
+                error={engineMode === "online" ? error : null}
                 onOpenRules={() => setRulesOpen(true)}
+                engineMode={engineMode}
+                onEngineModeChange={setEngineMode}
+                offlineYourName={offlineYourName}
+                offlineComputerLabel={offlineComputerLabel}
+                onOfflineYourNameChange={setOfflineYourName}
+                onOfflineComputerLabelChange={setOfflineComputerLabel}
+                playIdleText={playIdleLabel}
               />
 
               {/* Ad slot — same as GamePlayPage */}

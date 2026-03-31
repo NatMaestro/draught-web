@@ -4,6 +4,125 @@ import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 import { ALL_BOT_TIERS, type BotDef } from "@/data/aiBots";
 import { BotSelectModal } from "@/components/game/BotSelectModal";
 
+export type BotEngineMode = "online" | "offline";
+
+type EngineModeControlsProps = {
+  show: boolean;
+  engineMode: BotEngineMode;
+  onEngineModeChange: (mode: BotEngineMode) => void;
+  loading: boolean;
+  offlineYourName: string;
+  offlineComputerLabel: string;
+  onOfflineYourNameChange?: (v: string) => void;
+  onOfflineComputerLabelChange?: (v: string) => void;
+  /** Extra classes on the outer wrapper (e.g. mobile panel). */
+  wrapperClassName?: string;
+  /** Short intro line above the toggle (mobile). */
+  intro?: string | null;
+};
+
+/** Shared Online vs this-device bar — used in the bot lobby (sidebar + mobile board column). */
+export function BotEngineModeBar({
+  show,
+  engineMode,
+  onEngineModeChange,
+  loading,
+  offlineYourName,
+  offlineComputerLabel,
+  onOfflineYourNameChange,
+  onOfflineComputerLabelChange,
+  wrapperClassName = "",
+  intro = null,
+}: EngineModeControlsProps) {
+  if (!show) return null;
+
+  const inner = (
+    <>
+      {intro ? (
+        <p className="mb-2 text-[11px] leading-snug text-text dark:text-white">
+          {intro}
+        </p>
+      ) : null}
+      <div
+        className="flex gap-1 rounded-xl border border-header/20 bg-cream/60 p-1 dark:bg-white/[0.06]"
+        role="group"
+        aria-label="How the AI runs"
+      >
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => onEngineModeChange("online")}
+          className={[
+            "min-h-9 flex-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition",
+            engineMode === "online"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "text-text/80 hover:bg-black/[0.04] dark:hover:bg-white/10",
+            loading ? "opacity-50" : "",
+          ].join(" ")}
+        >
+          Online
+          <span className="mt-0.5 block text-[9px] font-semibold opacity-90">
+            Server AI
+          </span>
+        </button>
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => onEngineModeChange("offline")}
+          className={[
+            "min-h-9 flex-1 rounded-lg px-2 py-1.5 text-[11px] font-bold transition",
+            engineMode === "offline"
+              ? "bg-emerald-600 text-white shadow-sm"
+              : "text-text/80 hover:bg-black/[0.04] dark:hover:bg-white/10",
+            loading ? "opacity-50" : "",
+          ].join(" ")}
+        >
+          This device
+          <span className="mt-0.5 block text-[9px] font-semibold opacity-90">
+            Offline match
+          </span>
+        </button>
+      </div>
+      {engineMode === "offline" ? (
+        <div className="mt-2 space-y-2">
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted dark:text-cyan-200/70">
+              Your name (bottom)
+            </span>
+            <input
+              type="text"
+              value={offlineYourName}
+              onChange={(e) => onOfflineYourNameChange?.(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-header/25 bg-cream px-2 py-1.5 text-xs text-text"
+              autoComplete="off"
+            />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted dark:text-cyan-200/70">
+              Computer label (optional)
+            </span>
+            <input
+              type="text"
+              value={offlineComputerLabel}
+              onChange={(e) =>
+                onOfflineComputerLabelChange?.(e.target.value)
+              }
+              placeholder="Computer"
+              className="mt-1 w-full rounded-lg border border-header/25 bg-cream px-2 py-1.5 text-xs text-text"
+              autoComplete="off"
+            />
+          </label>
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (wrapperClassName.trim().length > 0) {
+    return <div className={wrapperClassName}>{inner}</div>;
+  }
+  return <>{inner}</>;
+}
+
 type Props = {
   selected: BotDef;
   onSelect: (bot: BotDef) => void;
@@ -11,6 +130,15 @@ type Props = {
   loading: boolean;
   error: string | null;
   onOpenRules?: () => void;
+  /** When set, show Online vs this-device toggle and optional offline name fields. */
+  engineMode?: BotEngineMode;
+  onEngineModeChange?: (mode: BotEngineMode) => void;
+  offlineYourName?: string;
+  offlineComputerLabel?: string;
+  onOfflineYourNameChange?: (v: string) => void;
+  onOfflineComputerLabelChange?: (v: string) => void;
+  /** Primary action label (e.g. “Start offline match” in device mode). */
+  playIdleText?: string;
 };
 
 /**
@@ -24,8 +152,16 @@ export function PlayBotRightPanel({
   loading,
   error,
   onOpenRules,
+  engineMode = "online",
+  onEngineModeChange,
+  offlineYourName = "",
+  offlineComputerLabel = "",
+  onOfflineYourNameChange,
+  onOfflineComputerLabelChange,
+  playIdleText = "Play",
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
+  const showEngineToggle = typeof onEngineModeChange === "function";
 
   return (
     <>
@@ -88,7 +224,7 @@ export function PlayBotRightPanel({
                     <button
                       key={bot.id}
                       type="button"
-                      disabled={loading}
+                      disabled={loading && engineMode === "online"}
                       onClick={() => onSelect(bot)}
                       title={`${bot.name} — ${bot.tagline}`}
                       className={[
@@ -113,18 +249,38 @@ export function PlayBotRightPanel({
           ))}
         </div>
 
-        <div className="shrink-0 space-y-2 border-t border-header/20 bg-sheet/90 p-3">
+        <div className="shrink-0 space-y-3 border-t border-header/20 bg-sheet/90 p-3">
+          {showEngineToggle ? (
+            <div>
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
+                Where the AI plays
+              </p>
+              <BotEngineModeBar
+                show
+                engineMode={engineMode}
+                onEngineModeChange={onEngineModeChange}
+                loading={loading}
+                offlineYourName={offlineYourName}
+                offlineComputerLabel={offlineComputerLabel}
+                onOfflineYourNameChange={onOfflineYourNameChange}
+                onOfflineComputerLabelChange={onOfflineComputerLabelChange}
+                intro={null}
+              />
+            </div>
+          ) : null}
           <motion.button
             type="button"
-            disabled={loading}
-            whileTap={{ scale: loading ? 1 : 0.98 }}
+            disabled={loading && engineMode === "online"}
+            whileTap={{
+              scale: loading && engineMode === "online" ? 1 : 0.98,
+            }}
             onClick={onPlay}
             className="flex w-full items-center justify-center rounded-xl bg-emerald-600 py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
           >
             <DraughtLoaderButtonContent
-              loading={loading}
+              loading={loading && engineMode === "online"}
               loadingText="Starting…"
-              idleText="Play"
+              idleText={playIdleText}
               tone="onDark"
             />
           </motion.button>
@@ -141,7 +297,7 @@ export function PlayBotRightPanel({
         onClose={() => setPickerOpen(false)}
         selected={selected}
         onSelect={onSelect}
-        loading={loading}
+        loading={loading && engineMode === "online"}
       />
 
       {/* —— Mobile dock —— */}
@@ -158,7 +314,7 @@ export function PlayBotRightPanel({
           <div className="flex gap-2 rounded-2xl border border-black/10 bg-sheet/95 p-2 shadow-[0_-8px_32px_rgba(0,0,0,0.12)] backdrop-blur-xl dark:border-white/10 dark:bg-cream/90 dark:shadow-[0_-8px_32px_rgba(0,0,0,0.4)]">
             <button
               type="button"
-              disabled={loading}
+              disabled={loading && engineMode === "online"}
               onClick={() => setPickerOpen(true)}
               className="flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-header/30 bg-black/[0.03] px-3 py-2.5 text-left transition active:scale-[0.99] disabled:opacity-50 dark:border-cyan-500/25 dark:bg-white/[0.06]"
             >
@@ -179,15 +335,17 @@ export function PlayBotRightPanel({
             </button>
             <motion.button
               type="button"
-              disabled={loading}
-              whileTap={{ scale: loading ? 1 : 0.97 }}
+              disabled={loading && engineMode === "online"}
+              whileTap={{
+                scale: loading && engineMode === "online" ? 1 : 0.97,
+              }}
               onClick={onPlay}
               className="flex min-h-[48px] min-w-[5.5rem] shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 px-3 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_-4px_rgba(34,197,94,0.45)] disabled:opacity-50"
             >
               <DraughtLoaderButtonContent
-                loading={loading}
+                loading={loading && engineMode === "online"}
                 loadingText="Starting…"
-                idleText="Play"
+                idleText={playIdleText}
                 tone="onDark"
               />
             </motion.button>

@@ -33,7 +33,7 @@ export const BOARD_ROTATION_MS_MAX = 4500;
 export const MULTI_CAPTURE_STEP_MS = 420;
 
 /** Faster step when animating the bot’s multi-capture (vs AI only — human moves keep `MULTI_CAPTURE_STEP_MS`). */
-export const AI_MULTI_CAPTURE_STEP_MS = 110;
+export const AI_MULTI_CAPTURE_STEP_MS = 55;
 
 /** Empty 10×10 grid — safe default when API data is missing or malformed. */
 export function emptyBoard(): number[][] {

@@ -18,6 +18,7 @@ import { PlayMatchmakingPage } from "@/pages/PlayMatchmakingPage";
 import { PlayFriendsPage } from "@/pages/PlayFriendsPage";
 import { GamePlayPage } from "@/pages/GamePlayPage";
 import { PlayLocalPage } from "@/pages/PlayLocalPage";
+import { OfflineGamePlayPage } from "@/pages/OfflineGamePlayPage";
 import { PlayAIPage } from "@/pages/PlayAIPage";
 import { ProfilePage } from "@/pages/ProfilePage";
 import { GameReviewPage } from "@/pages/GameReviewPage";
@@ -45,6 +46,7 @@ const router = createBrowserRouter([
       { path: "friends", element: <Navigate to="/play/friends" replace /> },
       { path: "play", element: <PlayGamePage /> },
       { path: "play/local", element: <PlayLocalPage /> },
+      { path: "play/offline", element: <OfflineGamePlayPage /> },
       { path: "play/matchmaking", element: <PlayMatchmakingPage /> },
       { path: "play/ai", element: <PlayAIPage /> },
       { path: "play/game/:gameId", element: <GamePlayPage /> },
