@@ -112,25 +112,18 @@ export function HomePage() {
     resume.status === "active" &&
     resume.gameId.length > 0;
 
+  /** iOS Safari has no Install sheet — we only pitch install where Chromium can prompt. */
+  const showInstallUpsell =
+    !isStandalone && !isIos && (Boolean(canPromptInstall) || Boolean(isMobile));
+
   const onInstall = async () => {
-    if (canPromptInstall) {
-      setInstallBusy(true);
-      try {
-        await promptInstall();
-      } finally {
-        setInstallBusy(false);
-      }
-      return;
+    if (!canPromptInstall) return;
+    setInstallBusy(true);
+    try {
+      await promptInstall();
+    } finally {
+      setInstallBusy(false);
     }
-    if (isIos) {
-      window.alert("On iPhone/iPad: open this in Safari, tap Share, then Add to Home Screen.");
-      return;
-    }
-    if (!isMobile) {
-      window.alert("You're on desktop browser. Please use a mobile device to download and install the app.");
-      return;
-    }
-    window.alert("Install option is not available yet in this browser. Open the browser menu and tap Install app.");
   };
 
   return (
@@ -214,16 +207,22 @@ export function HomePage() {
           className="mx-auto max-w-xl md:grid md:max-w-none md:grid-cols-2 md:gap-8 md:pt-6"
         >
           <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm dark:md:bg-sheet/50">
-            {!isStandalone ? (
+            {showInstallUpsell ? (
               <div className="mb-4 rounded-2xl border border-header/15 bg-sheet/60 px-4 py-3">
                 <button
                   type="button"
                   onClick={() => void onInstall()}
-                  disabled={installBusy}
+                  disabled={installBusy || !canPromptInstall}
                   className="w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
                 >
-                  {installBusy ? "Opening install..." : "Download app"}
+                  {installBusy ? "Working…" : "Install app"}
                 </button>
+                {isMobile && !canPromptInstall ? (
+                  <p className="mt-2 text-xs leading-snug text-muted">
+                    Waiting on the Install prompt? Try your browser&apos;s ⋮ menu → Install app when it
+                    appears.
+                  </p>
+                ) : null}
               </div>
             ) : null}
             {isAuthenticated && incoming.length > 0 ? (
@@ -314,15 +313,22 @@ export function HomePage() {
             >
               Start playing
             </Link>
-            {!isStandalone ? (
-              <button
-                type="button"
-                onClick={() => void onInstall()}
-                disabled={installBusy}
-                className="mt-3 inline-flex rounded-full bg-header px-8 py-3 text-sm font-semibold text-text shadow-md transition hover:scale-[1.02] disabled:opacity-60"
-              >
-                {installBusy ? "Opening install..." : "Download app"}
-              </button>
+            {showInstallUpsell ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => void onInstall()}
+                  disabled={installBusy || !canPromptInstall}
+                  className="mt-3 inline-flex rounded-full bg-header px-8 py-3 text-sm font-semibold text-text shadow-md transition hover:scale-[1.02] disabled:opacity-60"
+                >
+                  {installBusy ? "Working…" : "Install app"}
+                </button>
+                {isMobile && !canPromptInstall ? (
+                  <p className="mt-2 max-w-sm text-xs text-muted">
+                    If the Install prompt hasn&apos;t popped up yet, look for ⋮ → Install app in your browser.
+                  </p>
+                ) : null}
+              </>
             ) : null}
           </div>
         </motion.div>

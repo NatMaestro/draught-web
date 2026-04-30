@@ -1,7 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+
+function readStandalone(): boolean {
+  const w = window.navigator as Navigator & { standalone?: boolean };
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    w.standalone === true
+  );
+}
 
 export function useInstallPrompt() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [isStandalone, setIsStandalone] = useState(readStandalone);
 
   useEffect(() => {
     const onBeforeInstallPrompt = (event: Event) => {
@@ -12,18 +21,17 @@ export function useInstallPrompt() {
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
   }, []);
 
-  const isStandalone = useMemo(
-    () =>
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as Navigator & { standalone?: boolean }).standalone === true,
-    [],
-  );
+  useEffect(() => {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const sync = () => setIsStandalone(readStandalone());
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
-  const isIos = useMemo(() => /iphone|ipad|ipod/i.test(navigator.userAgent), []);
-  const isMobile = useMemo(
-    () => /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent),
-    [],
-  );
+  const ua = navigator.userAgent;
+  const isIos = /iphone|ipad|ipod/i.test(ua);
+  const isMobile = /android|iphone|ipad|ipod|mobile/i.test(ua);
 
   const promptInstall = useCallback(async () => {
     if (!installEvent) return false;

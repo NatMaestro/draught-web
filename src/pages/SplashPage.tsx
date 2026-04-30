@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
@@ -27,6 +27,16 @@ export function SplashPage() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const [fadeDone, setFadeDone] = useState(false);
   const hasNavigated = useRef(false);
+
+  useLayoutEffect(() => {
+    const w = window.navigator as Navigator & { standalone?: boolean };
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      w.standalone === true;
+    if (!standalone || hasNavigated.current) return;
+    hasNavigated.current = true;
+    navigate("/home", { replace: true });
+  }, [navigate]);
 
   useEffect(() => {
     const t = window.setTimeout(() => setFadeDone(true), 3500);
