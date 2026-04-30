@@ -13,7 +13,7 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 /**
- * Registers `public/sw.js`, subscribes to Web Push with the server VAPID key,
+ * Registers the app service worker, subscribes to Web Push with the server VAPID key,
  * and POSTs the subscription to `/api/social/push/subscribe/`.
  */
 export async function subscribeToPushNotifications(): Promise<{

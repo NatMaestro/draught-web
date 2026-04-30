@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { FeedbackLink } from "@/components/feedback/FeedbackLink";
 import { FEEDBACK_FORM_URL } from "@/lib/config";
 import { subscribeToPushNotifications } from "@/lib/push";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { useAuthStore } from "@/store/authStore";
 import { DraughtLoaderButtonContent } from "@/components/ui/DraughtLoader";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
@@ -89,6 +90,14 @@ export function MorePage() {
   const { isAuthenticated, username, logout } = useAuthStore();
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
+  const [installBusy, setInstallBusy] = useState(false);
+  const {
+    canPromptInstall,
+    isIos,
+    isMobile,
+    isStandalone,
+    promptInstall,
+  } = useInstallPrompt();
 
   const onEnablePush = async () => {
     setPushBusy(true);
@@ -105,6 +114,27 @@ export function MorePage() {
 
   const scrollToSettings = () => {
     document.getElementById("more-settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const onInstallApp = async () => {
+    if (canPromptInstall) {
+      setInstallBusy(true);
+      try {
+        await promptInstall();
+      } finally {
+        setInstallBusy(false);
+      }
+      return;
+    }
+    if (isIos) {
+      window.alert("On iPhone/iPad: open this in Safari, tap Share, then Add to Home Screen.");
+      return;
+    }
+    if (!isMobile) {
+      window.alert("You're on desktop browser. Please use a mobile device to download and install the app.");
+      return;
+    }
+    window.alert("Install option is not available yet in this browser. Open the browser menu and tap Install app.");
   };
 
   return (
@@ -355,6 +385,26 @@ export function MorePage() {
 
         <div id="more-settings" className="scroll-mt-4 mt-6 space-y-4 rounded-3xl border border-header/15 bg-white/50 p-5 shadow-card backdrop-blur-sm dark:border-header/25 dark:bg-sheet/45">
           <h2 className="font-display text-xl text-text">Settings</h2>
+          <div className="rounded-2xl border border-header/10 bg-sheet/50 px-4 py-3">
+            <h3 className="text-sm font-bold uppercase tracking-wide text-text/80">Install app</h3>
+            {!isStandalone ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  disabled={installBusy}
+                  onClick={() => void onInstallApp()}
+                  className="flex w-full items-center justify-center rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
+                >
+                  <DraughtLoaderButtonContent
+                    loading={installBusy}
+                    loadingText="Opening install..."
+                    idleText="Download app"
+                    tone="onLight"
+                  />
+                </button>
+              </div>
+            ) : null}
+          </div>
           {isAuthenticated ? (
             <>
               <p className="text-sm text-muted">

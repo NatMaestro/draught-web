@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
+import { useInstallPrompt } from "@/hooks/useInstallPrompt";
 import { HomeRow } from "@/components/home/HomeRow";
 import { MiniBoardPreview } from "@/components/home/MiniBoardPreview";
 import { RatingCardsStrip } from "@/components/home/RatingCardsStrip";
@@ -36,7 +37,9 @@ function initialsFromUsername(username: string | null): string {
 export function HomePage() {
   const navigate = useNavigate();
   const { isAuthenticated, username, userId } = useAuthStore();
+  const { canPromptInstall, isIos, isMobile, isStandalone, promptInstall } = useInstallPrompt();
   const [logoFailed, setLogoFailed] = useState(false);
+  const [installBusy, setInstallBusy] = useState(false);
   const [resume, setResume] = useState<ResumeGameSnapshot | null>(null);
   const [profile, setProfile] = useState<{
     rating: number;
@@ -108,6 +111,27 @@ export function HomePage() {
     resume != null &&
     resume.status === "active" &&
     resume.gameId.length > 0;
+
+  const onInstall = async () => {
+    if (canPromptInstall) {
+      setInstallBusy(true);
+      try {
+        await promptInstall();
+      } finally {
+        setInstallBusy(false);
+      }
+      return;
+    }
+    if (isIos) {
+      window.alert("On iPhone/iPad: open this in Safari, tap Share, then Add to Home Screen.");
+      return;
+    }
+    if (!isMobile) {
+      window.alert("You're on desktop browser. Please use a mobile device to download and install the app.");
+      return;
+    }
+    window.alert("Install option is not available yet in this browser. Open the browser menu and tap Install app.");
+  };
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-cream md:rounded-none md:py-0">
@@ -190,6 +214,18 @@ export function HomePage() {
           className="mx-auto max-w-xl md:grid md:max-w-none md:grid-cols-2 md:gap-8 md:pt-6"
         >
           <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm dark:md:bg-sheet/50">
+            {!isStandalone ? (
+              <div className="mb-4 rounded-2xl border border-header/15 bg-sheet/60 px-4 py-3">
+                <button
+                  type="button"
+                  onClick={() => void onInstall()}
+                  disabled={installBusy}
+                  className="w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
+                >
+                  {installBusy ? "Opening install..." : "Download app"}
+                </button>
+              </div>
+            ) : null}
             {isAuthenticated && incoming.length > 0 ? (
               <IncomingChallengesSection
                 challenges={incoming}
@@ -278,6 +314,16 @@ export function HomePage() {
             >
               Start playing
             </Link>
+            {!isStandalone ? (
+              <button
+                type="button"
+                onClick={() => void onInstall()}
+                disabled={installBusy}
+                className="mt-3 inline-flex rounded-full bg-header px-8 py-3 text-sm font-semibold text-text shadow-md transition hover:scale-[1.02] disabled:opacity-60"
+              >
+                {installBusy ? "Opening install..." : "Download app"}
+              </button>
+            ) : null}
           </div>
         </motion.div>
       </div>

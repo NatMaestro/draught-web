@@ -1,5 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { registerSW } from "virtual:pwa-register";
 import {
   setAccessTokenRefreshedHandler,
   setRefreshFailedHandler,
@@ -26,6 +27,16 @@ setAccessTokenRefreshedHandler((access) => {
 });
 setRefreshFailedHandler(() => {
   void useAuthStore.getState().logout();
+});
+
+// Keep users on fresh assets; avoid forcing reload during live gameplay route.
+registerSW({
+  immediate: true,
+  onNeedRefresh() {
+    const inLiveGame = /^\/play\/game\//.test(window.location.pathname);
+    if (inLiveGame) return;
+    window.location.reload();
+  },
 });
 
 const root = document.getElementById("root");
