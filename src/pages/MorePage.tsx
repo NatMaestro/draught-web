@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { InstallAppHelpModal } from "@/components/home/InstallAppHelpModal";
 import { Link } from "react-router-dom";
 import { FeedbackLink } from "@/components/feedback/FeedbackLink";
 import { FEEDBACK_FORM_URL } from "@/lib/config";
@@ -91,6 +92,7 @@ export function MorePage() {
   const [pushBusy, setPushBusy] = useState(false);
   const [pushMsg, setPushMsg] = useState<string | null>(null);
   const [installBusy, setInstallBusy] = useState(false);
+  const [installModalOpen, setInstallModalOpen] = useState(false);
   const {
     canPromptInstall,
     isIos,
@@ -99,8 +101,7 @@ export function MorePage() {
     promptInstall,
   } = useInstallPrompt();
 
-  const showInstallUpsell =
-    !isStandalone && !isIos && (Boolean(canPromptInstall) || Boolean(isMobile));
+  const showDownloadPromo = !isStandalone;
 
   const onEnablePush = async () => {
     setPushBusy(true);
@@ -119,11 +120,12 @@ export function MorePage() {
     document.getElementById("more-settings")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const onInstallApp = async () => {
+  const onChromiumInstallPrompt = async () => {
     if (!canPromptInstall) return;
     setInstallBusy(true);
     try {
-      await promptInstall();
+      const accepted = await promptInstall();
+      if (accepted) setInstallModalOpen(false);
     } finally {
       setInstallBusy(false);
     }
@@ -377,30 +379,20 @@ export function MorePage() {
 
         <div id="more-settings" className="scroll-mt-4 mt-6 space-y-4 rounded-3xl border border-header/15 bg-white/50 p-5 shadow-card backdrop-blur-sm dark:border-header/25 dark:bg-sheet/45">
           <h2 className="font-display text-xl text-text">Settings</h2>
-          {showInstallUpsell ? (
+          {showDownloadPromo ? (
             <div className="rounded-2xl border border-header/10 bg-sheet/50 px-4 py-3">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-text/80">Install app</h3>
-              <div className="mt-3">
-                <button
-                  type="button"
-                  disabled={installBusy || !canPromptInstall}
-                  onClick={() => void onInstallApp()}
-                  className="flex w-full items-center justify-center rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
-                >
-                  <DraughtLoaderButtonContent
-                    loading={installBusy}
-                    loadingText="Working…"
-                    idleText="Install app"
-                    tone="onLight"
-                  />
-                </button>
-                {isMobile && !canPromptInstall ? (
-                  <p className="mt-2 text-xs leading-snug text-muted">
-                    Waiting on the Install prompt? Try your browser&apos;s ⋮ menu → Install app when it
-                    appears.
-                  </p>
-                ) : null}
-              </div>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-text/80">Download app</h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Opens step-by-step instructions for iPhone (Share → Add to Home Screen) and Android /
+                Chrome (Install).
+              </p>
+              <button
+                type="button"
+                onClick={() => setInstallModalOpen(true)}
+                className="mt-3 flex w-full items-center justify-center rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text"
+              >
+                Download app — how to
+              </button>
             </div>
           ) : null}
           {isAuthenticated ? (
@@ -459,6 +451,16 @@ export function MorePage() {
 
         <p className="mt-6 pb-4 text-center text-xs text-muted">Draught web — mobile-first, desktop-enhanced.</p>
       </div>
+
+      <InstallAppHelpModal
+        open={installModalOpen}
+        onClose={() => setInstallModalOpen(false)}
+        isIos={isIos}
+        isMobile={isMobile}
+        canPromptInstall={canPromptInstall}
+        installBusy={installBusy}
+        onChromiumInstall={() => void onChromiumInstallPrompt()}
+      />
     </div>
   );
 }

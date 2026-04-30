@@ -24,6 +24,7 @@ import {
   type ResumeGameSnapshot,
 } from "@/lib/resumeGameStorage";
 import { DRAUGHT_SOCIAL_REFRESH_EVENT } from "@/hooks/useSocialWebSocket";
+import { InstallAppHelpModal } from "@/components/home/InstallAppHelpModal";
 
 function initialsFromUsername(username: string | null): string {
   if (!username?.trim()) return "?";
@@ -51,6 +52,7 @@ export function HomePage() {
   const [unreadSocial, setUnreadSocial] = useState(0);
   const [recommended, setRecommended] = useState<RecommendedMatchResponse | null>(null);
   const installBannerRef = useRef<HTMLDivElement>(null);
+  const [installModalOpen, setInstallModalOpen] = useState(false);
 
   /** Set once when landing sends users with `?install=1`; URL is stripped after read. */
   const [installFromLanding] = useState(() => {
@@ -75,6 +77,12 @@ export function HomePage() {
     const t = window.setTimeout(() => {
       installBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     }, 400);
+    return () => window.clearTimeout(t);
+  }, [installFromLanding]);
+
+  useEffect(() => {
+    if (!installFromLanding) return;
+    const t = window.setTimeout(() => setInstallModalOpen(true), 600);
     return () => window.clearTimeout(t);
   }, [installFromLanding]);
 
@@ -139,23 +147,19 @@ export function HomePage() {
     resume.status === "active" &&
     resume.gameId.length > 0;
 
-  /** Real install prompt is Chromium-only; `installFromLanding` keeps the banner visible until users act. */
-  const showInstallUpsell =
-    !isStandalone &&
-    !isIos &&
-    (Boolean(canPromptInstall) || Boolean(isMobile) || installFromLanding);
-
-  const showIosInstallCue = !isStandalone && isIos && installFromLanding;
+  /** Show launcher install help for anyone not already in standalone / installed window. */
+  const showDownloadPromo = !isStandalone;
 
   const installHighlightRing = installFromLanding
     ? "ring-2 ring-active ring-offset-2 ring-offset-cream animate-pulse"
     : "";
 
-  const onInstall = async () => {
+  const onChromiumInstallPrompt = async () => {
     if (!canPromptInstall) return;
     setInstallBusy(true);
     try {
-      await promptInstall();
+      const accepted = await promptInstall();
+      if (accepted) setInstallModalOpen(false);
     } finally {
       setInstallBusy(false);
     }
@@ -242,41 +246,24 @@ export function HomePage() {
           className="mx-auto max-w-xl md:grid md:max-w-none md:grid-cols-2 md:gap-8 md:pt-6"
         >
           <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm dark:md:bg-sheet/50">
-            {showIosInstallCue || showInstallUpsell ? (
+            {showDownloadPromo ? (
               <div
                 ref={installBannerRef}
                 className={`mb-4 rounded-2xl border border-header/15 bg-sheet/60 px-4 py-3 ${installHighlightRing}`}
               >
-                {showIosInstallCue ? (
-                  <>
-                    <p className="text-sm font-semibold text-text">Pin Draught to your Home Screen</p>
-                    <p className="mt-2 text-xs leading-snug text-muted">
-                      In Safari tap <span className="font-semibold text-text">Share</span>, then{" "}
-                      <span className="font-semibold text-text">Add to Home Screen</span>. Open Draught from
-                      that icon for a full-screen app-style window (not a normal Safari tab).
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void onInstall()}
-                      disabled={installBusy || !canPromptInstall}
-                      className="w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
-                    >
-                      {installBusy ? "Opening install…" : "Install app"}
-                    </button>
-                    {(isMobile && !canPromptInstall) || installFromLanding ? (
-                      <p className="mt-2 text-xs leading-snug text-muted">
-                        {canPromptInstall && installFromLanding
-                          ? "Tap Install app above—or use ⋮ menu → Install app if you prefer."
-                          : !canPromptInstall
-                            ? "Waiting on the Install prompt? Try your browser&apos;s ⋮ menu → Install app."
-                            : null}
-                      </p>
-                    ) : null}
-                  </>
-                )}
+                <p className="text-sm font-semibold text-text">Download app</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">
+                  Put Draught on your Home Screen or app drawer so it opens full screen{" "}
+                  <span className="text-text">without the browser address bar</span>. Tap below for guided
+                  steps (Share → Add to Home Screen on iPhone, Install on Android &amp; Chrome).
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setInstallModalOpen(true)}
+                  className="mt-3 w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text shadow-sm transition hover:opacity-95"
+                >
+                  Download app
+                </button>
               </div>
             ) : null}
             {isAuthenticated && incoming.length > 0 ? (
@@ -367,26 +354,28 @@ export function HomePage() {
             >
               Start playing
             </Link>
-            {showInstallUpsell ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => void onInstall()}
-                  disabled={installBusy || !canPromptInstall}
-                  className="mt-3 inline-flex rounded-full bg-header px-8 py-3 text-sm font-semibold text-text shadow-md transition hover:scale-[1.02] disabled:opacity-60"
-                >
-                  {installBusy ? "Working…" : "Install app"}
-                </button>
-                {isMobile && !canPromptInstall ? (
-                  <p className="mt-2 max-w-sm text-xs text-muted">
-                    If the Install prompt hasn&apos;t popped up yet, look for ⋮ → Install app in your browser.
-                  </p>
-                ) : null}
-              </>
+            {showDownloadPromo ? (
+              <button
+                type="button"
+                onClick={() => setInstallModalOpen(true)}
+                className="mt-3 inline-flex rounded-full bg-header px-8 py-3 text-sm font-semibold text-text shadow-md transition hover:scale-[1.02]"
+              >
+                Download app
+              </button>
             ) : null}
           </div>
         </motion.div>
       </div>
+
+      <InstallAppHelpModal
+        open={installModalOpen}
+        onClose={() => setInstallModalOpen(false)}
+        isIos={isIos}
+        isMobile={isMobile}
+        canPromptInstall={canPromptInstall}
+        installBusy={installBusy}
+        onChromiumInstall={() => void onChromiumInstallPrompt()}
+      />
 
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-30 flex justify-center px-4 pb-floating-above-tab md:hidden">
         <motion.div className="pointer-events-auto w-full max-w-xl" whileTap={{ scale: 0.98 }}>
