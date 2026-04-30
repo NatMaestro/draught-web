@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useState, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/store/authStore";
@@ -50,6 +50,33 @@ export function HomePage() {
   const [incoming, setIncoming] = useState<GameChallenge[]>([]);
   const [unreadSocial, setUnreadSocial] = useState(0);
   const [recommended, setRecommended] = useState<RecommendedMatchResponse | null>(null);
+  const installBannerRef = useRef<HTMLDivElement>(null);
+
+  /** Set once when landing sends users with `?install=1`; URL is stripped after read. */
+  const [installFromLanding] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("install") === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  useLayoutEffect(() => {
+    if (!installFromLanding) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("install") !== "1") return;
+    sp.delete("install");
+    const q = sp.toString();
+    navigate(`/home${q ? `?${q}` : ""}`, { replace: true });
+  }, [installFromLanding, navigate]);
+
+  useEffect(() => {
+    if (!installFromLanding) return;
+    const t = window.setTimeout(() => {
+      installBannerRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [installFromLanding]);
 
   const refreshDashboard = useCallback(async () => {
     if (!isAuthenticated) return;
@@ -112,9 +139,17 @@ export function HomePage() {
     resume.status === "active" &&
     resume.gameId.length > 0;
 
-  /** iOS Safari has no Install sheet — we only pitch install where Chromium can prompt. */
+  /** Real install prompt is Chromium-only; `installFromLanding` keeps the banner visible until users act. */
   const showInstallUpsell =
-    !isStandalone && !isIos && (Boolean(canPromptInstall) || Boolean(isMobile));
+    !isStandalone &&
+    !isIos &&
+    (Boolean(canPromptInstall) || Boolean(isMobile) || installFromLanding);
+
+  const showIosInstallCue = !isStandalone && isIos && installFromLanding;
+
+  const installHighlightRing = installFromLanding
+    ? "ring-2 ring-active ring-offset-2 ring-offset-cream animate-pulse"
+    : "";
 
   const onInstall = async () => {
     if (!canPromptInstall) return;
@@ -207,22 +242,41 @@ export function HomePage() {
           className="mx-auto max-w-xl md:grid md:max-w-none md:grid-cols-2 md:gap-8 md:pt-6"
         >
           <div className="space-y-0 md:rounded-3xl md:border md:border-header/15 md:bg-white/40 md:p-6 md:shadow-card md:backdrop-blur-sm dark:md:bg-sheet/50">
-            {showInstallUpsell ? (
-              <div className="mb-4 rounded-2xl border border-header/15 bg-sheet/60 px-4 py-3">
-                <button
-                  type="button"
-                  onClick={() => void onInstall()}
-                  disabled={installBusy || !canPromptInstall}
-                  className="w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
-                >
-                  {installBusy ? "Working…" : "Install app"}
-                </button>
-                {isMobile && !canPromptInstall ? (
-                  <p className="mt-2 text-xs leading-snug text-muted">
-                    Waiting on the Install prompt? Try your browser&apos;s ⋮ menu → Install app when it
-                    appears.
-                  </p>
-                ) : null}
+            {showIosInstallCue || showInstallUpsell ? (
+              <div
+                ref={installBannerRef}
+                className={`mb-4 rounded-2xl border border-header/15 bg-sheet/60 px-4 py-3 ${installHighlightRing}`}
+              >
+                {showIosInstallCue ? (
+                  <>
+                    <p className="text-sm font-semibold text-text">Pin Draught to your Home Screen</p>
+                    <p className="mt-2 text-xs leading-snug text-muted">
+                      In Safari tap <span className="font-semibold text-text">Share</span>, then{" "}
+                      <span className="font-semibold text-text">Add to Home Screen</span>. Open Draught from
+                      that icon for a full-screen app-style window (not a normal Safari tab).
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void onInstall()}
+                      disabled={installBusy || !canPromptInstall}
+                      className="w-full rounded-full bg-header px-4 py-2.5 text-sm font-semibold text-text disabled:opacity-60"
+                    >
+                      {installBusy ? "Opening install…" : "Install app"}
+                    </button>
+                    {(isMobile && !canPromptInstall) || installFromLanding ? (
+                      <p className="mt-2 text-xs leading-snug text-muted">
+                        {canPromptInstall && installFromLanding
+                          ? "Tap Install app above—or use ⋮ menu → Install app if you prefer."
+                          : !canPromptInstall
+                            ? "Waiting on the Install prompt? Try your browser&apos;s ⋮ menu → Install app."
+                            : null}
+                      </p>
+                    ) : null}
+                  </>
+                )}
               </div>
             ) : null}
             {isAuthenticated && incoming.length > 0 ? (
